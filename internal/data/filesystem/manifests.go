@@ -48,18 +48,21 @@ func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manif
 		return err
 	}
 
-	linkPath := filepath.Join(
+	referrerDir := filepath.Join(
 		s.base, "repositories", repo, "_manifests",
 		"referrers", algo, hash, referrerDigest,
-		"link",
 	)
 
-	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
-		return fmt.Errorf("cannot create referrer directory %s: %w", filepath.Dir(linkPath), err)
+	if err := os.MkdirAll(referrerDir, 0o755); err != nil {
+		return fmt.Errorf("cannot create referrer directory %s: %w", referrerDir, err)
 	}
 
+	linkPath := filepath.Join(
+		referrerDir, "link",
+	)
+
 	if err := os.WriteFile(linkPath, []byte(subjectDigest), 0o644); err != nil {
-		return fmt.Errorf("cannot write file referrer %s: %w", linkPath, err)
+		return fmt.Errorf("cannot write referrer file %s: %w", linkPath, err)
 	}
 
 	return nil
