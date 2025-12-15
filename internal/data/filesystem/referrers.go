@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
 func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, size int64, err error) {
@@ -35,31 +36,43 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 	}
 
 	type descriptor struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
+		MediaType   string `json:"mediaType"`
+		Digest      string `json:"digest"`
+		Size        int64  `json:"size"`
+		Annotations map[string]string
 	}
 
 	manifests := []descriptor{}
 
 	for _, e := range entries {
 		referrerDigest := e.Name()
+		fi, err := e.Info()
+		if err != nil {
+			continue
+		}
 
 		referrerAlgo, referrerHash, err := digest.Parse(referrerDigest)
 		if err != nil {
 			continue
 		}
 
-		blob := filepath.Join(s.base, "blobs", referrerAlgo, referrerHash[:2], referrerHash)
-		st, err := os.Stat(blob)
+		blobName := filepath.Join(s.base, "blobs", referrerAlgo, referrerHash[:2], referrerHash)
+		blob, err := os.OpenFile(blobName, os.O_RDONLY, 0o644)
 		if err != nil {
+			continue
+		}
+		defer blob.Close()
+
+		manifest := &registry.Manifest{}
+		if err := json.NewDecoder(blob).Decode(manifest); err != nil {
 			continue
 		}
 
 		manifests = append(manifests, descriptor{
-			MediaType: "application/vnd.oci.image.manifest.v1+json",
-			Digest:    referrerDigest,
-			Size:      st.Size(),
+			MediaType:   manifest.MediaType,
+			Digest:      referrerDigest,
+			Size:        fi.Size(),
+			Annotations: manifest.Annotations,
 		})
 	}
 
