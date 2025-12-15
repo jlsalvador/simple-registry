@@ -35,5 +35,4 @@ type DataStorage interface {
 	RepositoriesList() ([]string, error)
 
 	ReferrersGet(repo, digest string) (r io.ReadCloser, size int64, err error)
-	BlobLinkExists(repo, reference string) error
 }

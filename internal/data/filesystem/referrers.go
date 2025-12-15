@@ -6,10 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
-	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
 func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, size int64, err error) {
@@ -73,35 +71,4 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 	f := io.NopCloser(bytes.NewReader(data))
 
 	return f, int64(len(data)), nil
-}
-
-func (s *FilesystemDataStorage) BlobLinkExists(repo, reference string) error {
-	var dgst string
-
-	if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
-		link := filepath.Join(
-			s.base, "repositories", repo,
-			"_layers", "tags", reference, "link",
-		)
-		b, err := os.ReadFile(link)
-		if err != nil {
-			return err
-		}
-		dgst = string(b)
-	} else {
-		dgst = reference
-	}
-
-	algo, hash, err := digest.Parse(dgst)
-	if err != nil {
-		return err
-	}
-
-	link := filepath.Join(
-		s.base, "repositories", repo,
-		"_layers", algo, hash, "link",
-	)
-
-	_, err = os.Stat(link)
-	return err
 }
