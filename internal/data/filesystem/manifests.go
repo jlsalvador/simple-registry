@@ -16,6 +16,7 @@ package filesystem
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -27,6 +28,42 @@ import (
 )
 
 const manifestAlgo = "sha256"
+
+// indexReferrer verifies if the manifest has a subject, if it so, create the refferers.
+func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manifestBytes []byte) error {
+	var manifest registry.Manifest
+
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return nil // Ignore invalid OCI 1.1.
+	}
+
+	if manifest.Subject == nil {
+		return nil
+	}
+
+	subjectDigest := manifest.Subject.Digest
+
+	algo, hash, err := digest.Parse(subjectDigest)
+	if err != nil {
+		return err
+	}
+
+	linkPath := filepath.Join(
+		s.base, "repositories", repo, "_manifests",
+		"referrers", algo, hash, referrerDigest,
+		"link",
+	)
+
+	if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
+		return fmt.Errorf("cannot create referrer directory %s: %w", filepath.Dir(linkPath), err)
+	}
+
+	if err := os.WriteFile(linkPath, []byte(subjectDigest), 0o644); err != nil {
+		return fmt.Errorf("cannot write file referrer %s: %w", linkPath, err)
+	}
+
+	return nil
+}
 
 // ManifestPut stores a manifest identified by "reference" (either a tag or a digest)
 // into the repository.
@@ -87,6 +124,9 @@ func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader)
 			return "", err
 		}
 	}
+
+	// Index the manifest referrer.
+	s.indexReferrer(repo, dgst, data.Bytes())
 
 	return dgst, nil
 }

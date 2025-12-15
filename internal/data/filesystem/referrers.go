@@ -43,16 +43,14 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 	manifests := []descriptor{}
 
 	for _, e := range entries {
-		link := filepath.Join(refDir, e.Name(), "link")
-		b, err := os.ReadFile(link)
+		referrerDigest := e.Name()
+
+		referrerAlgo, referrerHash, err := digest.Parse(referrerDigest)
 		if err != nil {
 			continue
 		}
 
-		dgst := string(b)
-		algo, hash, _ := digest.Parse(dgst)
-
-		blob := filepath.Join(s.base, "blobs", algo, hash[:2], hash)
+		blob := filepath.Join(s.base, "blobs", referrerAlgo, referrerHash[:2], referrerHash)
 		st, err := os.Stat(blob)
 		if err != nil {
 			continue
@@ -60,7 +58,7 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 
 		manifests = append(manifests, descriptor{
 			MediaType: "application/vnd.oci.image.manifest.v1+json",
-			Digest:    dgst,
+			Digest:    referrerDigest,
 			Size:      st.Size(),
 		})
 	}
