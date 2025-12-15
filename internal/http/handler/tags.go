@@ -74,9 +74,9 @@ func (m *ServeMux) TagsList(
 		return
 	}
 
-	// Sort tags.
+	// Sort tags alphabetically (case-sensitive).
 	sort.SliceStable(tags, func(i, j int) bool {
-		return i > j
+		return tags[i] < tags[j]
 	})
 
 	// "last" is an optional parameter.
