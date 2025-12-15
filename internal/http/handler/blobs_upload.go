@@ -283,7 +283,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	r *http.Request,
 ) {
 	// Validate request
-	if r.Header.Get("Content-Type") != "application/octet-stream" || r.Header.Get("Content-Length") == "" {
+	if r.Header.Get("Content-Type") != "application/octet-stream" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
