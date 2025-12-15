@@ -15,6 +15,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
@@ -26,22 +27,30 @@ import (
 )
 
 func main() {
+	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
+	datadir := flag.String("datadir", "./data", "Data directory")
+	adminName := flag.String("adminname", "admin", "Administrator name")
+	adminPwd := flag.String("adminpwd", "admin", "Administrator password")
+	cert := flag.String("cert", "", "TLS certificate")
+	key := flag.String("key", "", "TLS key")
+	flag.Parse()
 
 	rbacEngine := rbac.Engine{
 		Users: []rbac.User{
 			{
 				// Administrator.
-				Name: "admin",
+				Name: *adminName,
 				PasswordHash: func() string {
-					pwd, _ := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+					pwd, _ := bcrypt.GenerateFromPassword([]byte(*adminPwd), bcrypt.DefaultCost)
 					return string(pwd)
 				}(),
+				Groups: []string{"admins", "public"},
 			},
-			{
-				// Anonymous.
-				Name:   "",
-				Groups: []string{"public"},
-			},
+			// {
+			// 	// Anonymous.
+			// 	Name:   "",
+			// 	Groups: []string{"public"},
+			// },
 		},
 		Roles: []rbac.Role{
 			// Write
@@ -64,23 +73,23 @@ func main() {
 			},
 		},
 		RoleBindings: []rbac.RoleBinding{
+			// {
+			// 	Name: "public",
+			// 	Subjects: []rbac.Subject{
+			// 		{
+			// 			Kind: "Group",
+			// 			Name: "public",
+			// 		},
+			// 	},
+			// 	RoleName: "readonly",
+			// 	Scopes:   []string{"^$", "^library\/.+$"},
+			// },
 			{
-				Name: "public",
+				Name: "admins",
 				Subjects: []rbac.Subject{
 					{
 						Kind: "Group",
-						Name: "public",
-					},
-				},
-				RoleName: "write",
-				Scopes:   []string{"^.*$"},
-			},
-			{
-				Name: "admin",
-				Subjects: []rbac.Subject{
-					{
-						Kind: "User",
-						Name: "admin",
+						Name: "admins",
 					},
 				},
 				RoleName: "write",
@@ -91,12 +100,18 @@ func main() {
 
 	config := config.Config{
 		Rbac: rbacEngine,
-		Data: filesystem.NewFilesystemDataStorage("/tmp/registry"),
+		Data: filesystem.NewFilesystemDataStorage(*datadir),
 	}
-	addr := ":5000"
 
 	h := handler.NewHandler(config)
-	if err := http.ListenAndServe(addr, h); err != nil {
-		panic(err)
+
+	if *cert != "" && *key != "" {
+		if err := http.ListenAndServeTLS(*addr, *cert, *key, h); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := http.ListenAndServe(*addr, h); err != nil {
+			panic(err)
+		}
 	}
 }
