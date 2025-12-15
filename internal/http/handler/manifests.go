@@ -28,27 +28,6 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
-type Manifest struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	MediaType     string `json:"mediaType"`
-	Config        struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"config"`
-	Layers []struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"layers"`
-	Subject struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"subject"`
-	Annotations map[string]string `json:"annotations"`
-}
-
 // ManifestsGet returns the manifest blob.
 //
 // # Route pattern:
@@ -189,7 +168,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 	defer f.Close()
 
-	var manifest = &Manifest{}
+	var manifest = &registry.Manifest{}
 	if err := json.NewDecoder(f).Decode(manifest); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -197,7 +176,7 @@ func (m *ServeMux) ManifestsPut(
 
 	location := fmt.Sprintf("/v2/%s/manifests/%s", repo, dgst)
 	header := w.Header()
-	if manifest.Subject.Digest != "" {
+	if manifest.Subject != nil && manifest.Subject.Digest != "" {
 		header.Set("OCI-Subject", manifest.Subject.Digest)
 	}
 	header.Set("Location", location)
