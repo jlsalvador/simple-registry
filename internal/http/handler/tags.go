@@ -80,15 +80,22 @@ func (m *ServeMux) TagsList(
 	})
 
 	// "last" is an optional parameter.
-	// If it's provided, remove all tags before it.
+	// If it's provided, remove all tags BEFORE and INCLUDING it.
 	last := r.URL.Query().Get("last")
 	if last != "" {
-		// Remove values from tags until "last" is found.
+		// Find the index of "last".
+		foundIndex := -1
 		for i, v := range tags {
 			if v == last {
-				tags = tags[i:]
+				foundIndex = i
 				break
 			}
+		}
+
+		// If "last" was found, start the slice AFTER it.
+		if foundIndex != -1 {
+			// Remove values from tags up to and including "last".
+			tags = tags[foundIndex+1:]
 		}
 	}
 
