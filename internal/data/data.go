@@ -1,0 +1,39 @@
+// Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package data
+
+import "io"
+
+type DataStorage interface {
+	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
+	BlobsDelete(repo, digest string) error
+
+	BlobsUploadCreate(repo string) (uuid string, err error)
+	BlobsUploadCancel(repo, uuid string) error
+	BlobsUploadWrite(repo, uuid string, r io.Reader, start int64) error
+	BlobsUploadCommit(repo, uuid, digest string) error
+	BlobsUploadSize(repo, uuid string) (size int64, err error)
+
+	ManifestPut(repo, reference string, r io.Reader) (digest string, err error)
+	ManifestGet(repo, reference string) (r io.ReadCloser, size int64, err error)
+	ManifestDelete(repo, reference string) error
+
+	TagsList(repo string) ([]string, error)
+
+	RepositoriesList() ([]string, error)
+
+	ReferrersGet(repo, digest string) (r io.ReadCloser, size int64, err error)
+	BlobLinkExists(repo, reference string) error
+}
