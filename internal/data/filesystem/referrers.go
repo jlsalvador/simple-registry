@@ -3,7 +3,9 @@ package filesystem
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -23,7 +25,13 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 
 	entries, err := os.ReadDir(refDir)
 	if err != nil {
-		return nil, -1, err
+		if errors.Is(err, fs.ErrNotExist) {
+			// Directory does not exist.
+			// Return an empty list instead of failing.
+			entries = []os.DirEntry{}
+		} else {
+			return nil, -1, err
+		}
 	}
 
 	type descriptor struct {
@@ -32,7 +40,7 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 		Size      int64  `json:"size"`
 	}
 
-	var manifests []descriptor
+	manifests := []descriptor{}
 
 	for _, e := range entries {
 		link := filepath.Join(refDir, e.Name(), "link")
