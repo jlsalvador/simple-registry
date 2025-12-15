@@ -50,6 +50,7 @@ func (m *ServeMux) BlobsGet(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -116,6 +117,7 @@ func (m *ServeMux) BlobsDelete(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}

@@ -19,6 +19,7 @@ func (m *ServeMux) ReferrersGet(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}

@@ -155,6 +155,7 @@ func (m *ServeMux) BlobsUploadsPost(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -219,6 +220,7 @@ func (m *ServeMux) BlobsUploadsGet(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -296,6 +298,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -390,6 +393,7 @@ func (m *ServeMux) BlobsUploadsPut(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -486,6 +490,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
