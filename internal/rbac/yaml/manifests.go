@@ -20,10 +20,6 @@ type TokenManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type GroupManifest struct {
-	CommonManifest
-}
-
 type UserManifest struct {
 	CommonManifest
 

@@ -25,12 +25,6 @@ spec:
 
 ---
 apiVersion: v1
-kind: Group
-metadata:
-  name: admins
-
----
-apiVersion: v1
 kind: Role
 metadata:
   name: admins
@@ -62,7 +56,7 @@ spec:
   expiresAt: 2025-01-01T00:00:00Z
 `
 
-		tokens, users, groups, roles, bindings, err := yaml.ParseYAML([]byte(data))
+		tokens, users, roles, bindings, err := yaml.ParseYAML([]byte(data))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -73,10 +67,6 @@ spec:
 
 		if len(users) != 1 || users[0].Name != "admin" {
 			t.Fatalf("user not parsed")
-		}
-
-		if len(groups) != 1 || groups[0].Name != "admins" {
-			t.Fatalf("group not parsed")
 		}
 
 		if len(roles) != 1 || roles[0].Name != "admins" {
@@ -97,7 +87,7 @@ kind: Alien
 metadata:
   name: nope
 `
-		_, _, _, _, _, err := yaml.ParseYAML([]byte(data))
+		_, _, _, _, err := yaml.ParseYAML([]byte(data))
 		if !errors.Is(err, yaml.ErrUnsupportedKind) {
 			t.Fatal("expected yaml.ErrUnsupportedKind")
 		}
@@ -113,7 +103,7 @@ metadata:
   name: test
 spec:
   groups: [`
-		_, _, _, _, _, err := yaml.ParseYAML([]byte(data))
+		_, _, _, _, err := yaml.ParseYAML([]byte(data))
 		if !errors.Is(err, yaml.ErrWhileParsing) {
 			t.Fatal("expected yaml.ErrWhileParsing")
 		}
@@ -131,7 +121,7 @@ spec:
   resources: ["*"]
   verbs: ["explode"]
 `
-		_, _, _, _, _, err := yaml.ParseYAML([]byte(data))
+		_, _, _, _, err := yaml.ParseYAML([]byte(data))
 		if !errors.Is(err, rbac.ErrActionInvalid) {
 			t.Fatal("expected rbac.ErrActionInvalid")
 		}
