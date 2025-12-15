@@ -1,4 +1,4 @@
-# Simple Container Registry
+# Simple Registry
 
 A lightweight container registry with RBAC support.
 
