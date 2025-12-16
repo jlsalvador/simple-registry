@@ -16,102 +16,42 @@ package main
 
 import (
 	"flag"
-	"net/http"
 
-	"github.com/jlsalvador/simple-registry/internal/config"
-	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
-	"github.com/jlsalvador/simple-registry/internal/http/handler"
-	"github.com/jlsalvador/simple-registry/internal/rbac"
-
-	"golang.org/x/crypto/bcrypt"
+	"github.com/jlsalvador/simple-registry/internal/cmd"
 )
 
 func main() {
+	genHash := flag.Bool("genhash", false, "Generate a hash for the given password and exit")
 	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
-	datadir := flag.String("datadir", "./data", "Data directory")
-	adminName := flag.String("adminname", "admin", "Administrator name")
-	adminPwd := flag.String("adminpwd", "admin", "Administrator password")
-	cert := flag.String("cert", "", "TLS certificate")
-	key := flag.String("key", "", "TLS key")
+	dataDir := flag.String("datadir", "./data", "Data directory")
+	adminName := flag.String("adminname", "", "Administrator name")
+	adminPwd := flag.String("adminpwd", "", "Administrator password")
+	certFile := flag.String("cert", "", "TLS certificate")
+	keyFile := flag.String("key", "", "TLS key")
+	rbacDir := flag.String("rbacdir", "", "Directory with YAML files for RBAC")
 	flag.Parse()
 
-	rbacEngine := rbac.Engine{
-		Users: []rbac.User{
-			{
-				// Administrator.
-				Name: *adminName,
-				PasswordHash: func() string {
-					pwd, _ := bcrypt.GenerateFromPassword([]byte(*adminPwd), bcrypt.DefaultCost)
-					return string(pwd)
-				}(),
-				Groups: []string{"admins", "public"},
-			},
-			// {
-			// 	// Anonymous.
-			// 	Name:   "",
-			// 	Groups: []string{"public"},
-			// },
-		},
-		Roles: []rbac.Role{
-			// Write
-			{
-				Name:      "write",
-				Resources: []string{"*"},
-				Verbs: []rbac.Action{
-					rbac.ActionPull,
-					rbac.ActionPush,
-					rbac.ActionDelete,
-				},
-			},
-			// Read-Only
-			{
-				Name:      "readonly",
-				Resources: []string{"*"},
-				Verbs: []rbac.Action{
-					rbac.ActionPull,
-				},
-			},
-		},
-		RoleBindings: []rbac.RoleBinding{
-			// {
-			// 	Name: "public",
-			// 	Subjects: []rbac.Subject{
-			// 		{
-			// 			Kind: "Group",
-			// 			Name: "public",
-			// 		},
-			// 	},
-			// 	RoleName: "readonly",
-			// 	Scopes:   []string{"^$", "^library\/.+$"},
-			// },
-			{
-				Name: "admins",
-				Subjects: []rbac.Subject{
-					{
-						Kind: "Group",
-						Name: "admins",
-					},
-				},
-				RoleName: "write",
-				Scopes:   []string{"^.*$"},
-			},
-		},
+	var err error
+	switch {
+	case *genHash:
+		err = cmd.GenerateHash()
+
+	case *adminName != "" || *adminPwd != "":
+		err = cmd.Serve(
+			*addr,
+			*dataDir,
+			*adminName,
+			*adminPwd,
+			*certFile,
+			*keyFile,
+			*rbacDir,
+		)
+
+	default:
+		err = cmd.Help()
 	}
 
-	config := config.Config{
-		Rbac: rbacEngine,
-		Data: filesystem.NewFilesystemDataStorage(*datadir),
-	}
-
-	h := handler.NewHandler(config)
-
-	if *cert != "" && *key != "" {
-		if err := http.ListenAndServeTLS(*addr, *cert, *key, h); err != nil {
-			panic(err)
-		}
-	} else {
-		if err := http.ListenAndServe(*addr, h); err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
 	}
 }

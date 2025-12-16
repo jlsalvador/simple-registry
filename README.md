@@ -1,6 +1,6 @@
 # Simple Registry
 
-A lightweight container registry with RBAC support.
+A lightweight OCI-compatible container registry with RBAC support.
 
 ## Features
 

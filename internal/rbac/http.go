@@ -38,7 +38,7 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 		password := parts[1]
 
 		if i := slices.IndexFunc(e.Users, func(user User) bool {
-			return user.Name == username && user.IsPasswordValid([]byte(password))
+			return user.Name == username && user.IsPasswordValid(password)
 		}); i >= 0 {
 			return e.Users[i].Name, nil
 		}

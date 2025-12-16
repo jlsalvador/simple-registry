@@ -8,6 +8,6 @@ type User struct {
 	Groups       []string
 }
 
-func (u *User) IsPasswordValid(pwd []byte) bool {
-	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), pwd) == nil
+func (u *User) IsPasswordValid(pwd string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(pwd)) == nil
 }
