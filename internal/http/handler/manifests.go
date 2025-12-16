@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -74,7 +73,7 @@ func (m *ServeMux) ManifestsGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, rbac.ActionPull) {
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodGet) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -149,7 +148,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 
 	// Check if the user can to push manifests to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodPut) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -233,7 +232,7 @@ func (m *ServeMux) ManifestsDelete(
 		return
 	}
 
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, rbac.ActionDelete) {
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodDelete) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

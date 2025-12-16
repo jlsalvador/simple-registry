@@ -3,7 +3,7 @@ package rbac
 type Role struct {
 	Name      string
 	Resources []string
-	Verbs     []Action
+	Verbs     []string
 }
 
 type Subject struct {

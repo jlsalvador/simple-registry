@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -39,7 +38,7 @@ func (m *ServeMux) ReferrersGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, rbac.ActionPull) {
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, http.MethodGet) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

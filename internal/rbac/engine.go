@@ -12,7 +12,7 @@ type Engine struct {
 	RoleBindings []RoleBinding
 }
 
-func (e *Engine) IsAllowed(username string, resource string, repo string, action Action) bool {
+func (e *Engine) IsAllowed(username string, resource string, repo string, verb string) bool {
 	// Get user from "username".
 	var user *User
 	if i := slices.IndexFunc(e.Users, func(u User) bool {
@@ -26,7 +26,7 @@ func (e *Engine) IsAllowed(username string, resource string, repo string, action
 	for _, rb := range e.RoleBindings {
 		// Match role.
 		if i := slices.IndexFunc(e.Roles, func(r Role) bool {
-			return r.Name == rb.RoleName && slices.Contains(r.Verbs, action) && (slices.Contains(r.Resources, resource) || slices.Contains(r.Resources, "*"))
+			return r.Name == rb.RoleName && slices.Contains(r.Verbs, verb) && (slices.Contains(r.Resources, resource) || slices.Contains(r.Resources, "*"))
 		}); i < 0 {
 			continue
 		}

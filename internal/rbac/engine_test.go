@@ -1,6 +1,7 @@
 package rbac_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/jlsalvador/simple-registry/internal/rbac"
@@ -16,7 +17,13 @@ func baseEngine(t *testing.T) rbac.Engine {
 			{
 				Name:      "admins",
 				Resources: []string{"*"},
-				Verbs:     []rbac.Action{rbac.ActionPull, rbac.ActionPush},
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
+					http.MethodPost,
+					http.MethodPut,
+					http.MethodPatch,
+				},
 			},
 		},
 		RoleBindings: []rbac.RoleBinding{
@@ -35,7 +42,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	t.Run("user does not exist", func(t *testing.T) {
 		engine := baseEngine(t)
 
-		if engine.IsAllowed("ghost", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("ghost", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -51,7 +58,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -67,7 +74,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -83,7 +90,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -99,7 +106,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -110,7 +117,10 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			{
 				Name:      "limited",
 				Resources: []string{"manifests"},
-				Verbs:     []rbac.Action{rbac.ActionPull},
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
+				},
 			},
 		}
 		engine.RoleBindings = []rbac.RoleBinding{
@@ -122,7 +132,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPull) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -133,7 +143,10 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			{
 				Name:      "limited",
 				Resources: []string{"*"},
-				Verbs:     []rbac.Action{rbac.ActionPull},
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
+				},
 			},
 		}
 		engine.RoleBindings = []rbac.RoleBinding{
@@ -145,7 +158,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 			},
 		}
 
-		if engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPush) {
+		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodPost) {
 			t.Fatal("expected access denied")
 		}
 	})
@@ -153,7 +166,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	t.Run("allowed", func(t *testing.T) {
 		engine := baseEngine(t)
 
-		if !engine.IsAllowed("admin", "blobs", "library/busybox", rbac.ActionPush) {
+		if !engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodPost) {
 			t.Fatal("expected access allowed")
 		}
 	})

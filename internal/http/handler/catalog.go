@@ -76,7 +76,7 @@ func (m *ServeMux) CatalogList(
 	}
 
 	// Check if user has permission to access the catalog.
-	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", rbac.ActionPull) {
+	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", http.MethodGet) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

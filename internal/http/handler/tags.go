@@ -23,7 +23,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -121,7 +120,7 @@ func (m *ServeMux) TagsList(
 	for _, t := range tags {
 		// ACL: user must have permission to list tags on this repository
 		resource := repo + ":" + t
-		if !m.cfg.Rbac.IsAllowed(username, "tags", resource, rbac.ActionPull) {
+		if !m.cfg.Rbac.IsAllowed(username, "tags", resource, http.MethodGet) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}

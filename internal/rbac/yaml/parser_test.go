@@ -30,7 +30,7 @@ metadata:
   name: admins
 spec:
   resources: ["*"]
-  verbs: ["pull", "push"]
+  verbs: ["*"]
 
 ---
 apiVersion: v1
@@ -107,7 +107,7 @@ spec:
   verbs: ["explode"]
 `
 		_, _, _, _, err := yaml.ParseYAML([]byte(data))
-		if !errors.Is(err, rbac.ErrActionInvalid) {
+		if !errors.Is(err, rbac.ErrInvalidVerb) {
 			t.Fatal("expected rbac.ErrActionInvalid")
 		}
 	})

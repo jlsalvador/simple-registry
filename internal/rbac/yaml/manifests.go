@@ -34,7 +34,7 @@ type RoleManifest struct {
 
 	Spec struct {
 		Resources []string `json:"resources" yaml:"resources"` // "catalog", "blobs", "manifests", "tags", or "*".
-		Verbs     []string `json:"verbs" yaml:"verbs"`         // "list", "pull", "push", "delete", or "*".
+		Verbs     []string `json:"verbs" yaml:"verbs"`         // "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", or "*".
 	} `json:"spec" yaml:"spec"`
 }
 

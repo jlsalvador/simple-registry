@@ -23,7 +23,6 @@ import (
 
 	"github.com/jlsalvador/simple-registry/internal/config"
 	httpInternal "github.com/jlsalvador/simple-registry/internal/http"
-	"github.com/jlsalvador/simple-registry/internal/rbac"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 
@@ -168,7 +167,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	}
 
 	// Check if the user can push to repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -178,7 +177,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	from := r.URL.Query().Get("from")
 	if mount != "" && from != "" {
 		// Check if the user can pull the other repository.
-		if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+		if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -233,7 +232,7 @@ func (m *ServeMux) BlobsUploadsGet(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -311,7 +310,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPatch) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -420,7 +419,7 @@ func (m *ServeMux) BlobsUploadsPut(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPut) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -510,7 +509,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 	}
 
 	// Check if the user can push blobs into the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPush) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodDelete) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

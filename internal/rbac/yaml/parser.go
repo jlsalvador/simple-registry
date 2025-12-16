@@ -60,14 +60,14 @@ func ParseYAML(d []byte) (
 			if err = goYaml.Unmarshal(docBytes, &m); err != nil {
 				return nil, nil, nil, nil, errors.Join(ErrWhileUnmarshal, err)
 			}
-			actions, err := rbac.ParseActions(m.Spec.Verbs)
+			verbs, err := rbac.ParseVerbs(m.Spec.Verbs)
 			if err != nil {
 				return nil, nil, nil, nil, fmt.Errorf("%w for %s", err, m.Spec.Verbs)
 			}
 			roles = append(roles, rbac.Role{
 				Name:      common.Metadata.Name,
 				Resources: m.Spec.Resources,
-				Verbs:     actions,
+				Verbs:     verbs,
 			})
 
 		case "RoleBinding":

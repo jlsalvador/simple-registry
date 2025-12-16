@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -33,18 +34,22 @@ func GetRBACEngineStatic(adminName, adminPwd string) rbac.Engine {
 			{
 				Name:      "write",
 				Resources: []string{"*"},
-				Verbs: []rbac.Action{
-					rbac.ActionPull,
-					rbac.ActionPush,
-					rbac.ActionDelete,
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
+					http.MethodPost,
+					http.MethodPut,
+					http.MethodPatch,
+					http.MethodDelete,
 				},
 			},
 			// Read-Only
 			{
 				Name:      "readonly",
 				Resources: []string{"*"},
-				Verbs: []rbac.Action{
-					rbac.ActionPull,
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
 				},
 			},
 		},

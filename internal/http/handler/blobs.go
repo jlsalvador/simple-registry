@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -70,7 +69,7 @@ func (m *ServeMux) BlobsGet(
 	}
 
 	// Check if the user have permission to pull the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionPull) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodGet) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -137,7 +136,7 @@ func (m *ServeMux) BlobsDelete(
 	}
 
 	// Check if the user have permission to delete blobs.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, rbac.ActionDelete) {
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodDelete) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
