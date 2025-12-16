@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: RoleBinding
+metadata:
+  name: admins
+spec:
+  subjects:
+    - kind: Group
+      name: admins
+  roleRef:
+    name: admins
+  scopes: ["^.*$"]
+---
+apiVersion: v1
+kind: RoleBinding
+metadata:
+  name: public-catalog
+spec:
+  subjects:
+    - kind: Group
+      name: public
+  roleRef:
+    name: readonly
+  scopes: ["^$"]
+---
+apiVersion: v1
+kind: RoleBinding
+metadata:
+  name: public-library
+spec:
+  subjects:
+    - kind: Group
+      name: public
+  roleRef:
+    name: readonly
+  scopes: ["^library/.*$"]
+# ---
+# # CAUTION!!
+# # This rolebinding allows any user to do anything.
+# apiVersion: v1
+# kind: RoleBinding
+# metadata:
+#   name: dmz
+# spec:
+#   subjects:
+#     - kind: Group
+#       name: public
+#   roleRef:
+#     name: admins
+#   scopes: ["^.*$"]

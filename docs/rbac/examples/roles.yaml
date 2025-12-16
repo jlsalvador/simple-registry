@@ -1,0 +1,39 @@
+---
+apiVersion: v1
+kind: Role
+metadata:
+  name: admins
+spec:
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+apiVersion: v1
+kind: Role
+metadata:
+  name: readwrite
+spec:
+  resources:
+  - catalog
+  - blobs
+  - manifests
+  verbs:
+  - HEAD
+  - GET
+  - POST
+  - PUT
+  - PATCH
+---
+apiVersion: v1
+kind: Role
+metadata:
+  name: readonly
+spec:
+  resources:
+  - catalog
+  - blobs
+  - manifests
+  verbs:
+  - HEAD
+  - GET
