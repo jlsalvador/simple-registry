@@ -67,12 +67,5 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 		return "", ErrAuthCredentialsInvalid
 	}
 
-	// Check for anonymous user.
-	for _, u := range e.Users {
-		if u.Name == AnonymousUsername {
-			return AnonymousUsername, nil
-		}
-	}
-
 	return "", ErrAuthCredentialsInvalid
 }
