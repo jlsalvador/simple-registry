@@ -152,7 +152,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 func TestGetUsernameFromHttpRequest_Anonymous(t *testing.T) {
 	e := &rbac.Engine{
 		Users: []rbac.User{
-			{"", "", nil},
+			{rbac.AnonymousUsername, "hash", nil},
 		},
 	}
 	r := &http.Request{}
@@ -161,7 +161,7 @@ func TestGetUsernameFromHttpRequest_Anonymous(t *testing.T) {
 	if err != nil {
 		t.Errorf("e.GetUsernameFromHttpRequest() error = %v", err)
 	}
-	if username != "" {
-		t.Errorf("e.GetUsernameFromHttpRequest() username = %v, want empty string", username)
+	if username != rbac.AnonymousUsername {
+		t.Errorf("e.GetUsernameFromHttpRequest() username: %v, want: %v", username, rbac.AnonymousUsername)
 	}
 }

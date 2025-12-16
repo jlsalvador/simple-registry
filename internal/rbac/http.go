@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const AnonymousUsername = "anonymous"
+
 var httpAuthBasicRegexp = regexp.MustCompile(`^Basic\s+([a-zA-Z0-9+/]+={0,2})$`)
 var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$`)
 
@@ -67,8 +69,8 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 
 	// Check for anonymous user.
 	for _, u := range e.Users {
-		if u.Name == "" {
-			return "", nil
+		if u.Name == AnonymousUsername {
+			return AnonymousUsername, nil
 		}
 	}
 

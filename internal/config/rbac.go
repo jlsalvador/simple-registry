@@ -41,7 +41,7 @@ func GetRBACEngineStatic(
 			},
 			// {
 			// 	// Anonymous.
-			// 	Name:   "",
+			// 	Name:   "anonymous",
 			// 	Groups: []string{"public"},
 			// },
 		},
