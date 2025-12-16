@@ -18,17 +18,17 @@ func TestIsPasswordValid(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		plainPassword []byte
+		plainPassword string
 		want          bool
 	}{
 		{
 			name:          "valid password",
-			plainPassword: []byte("password123"),
+			plainPassword: "password123",
 			want:          true,
 		},
 		{
 			name:          "invalid password",
-			plainPassword: []byte("123456"),
+			plainPassword: "123456",
 			want:          false,
 		},
 	}
