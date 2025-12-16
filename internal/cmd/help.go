@@ -2,11 +2,15 @@ package cmd
 
 import "fmt"
 
-func Help() error {
-	fmt.Printf(`simple-registry v%s
+func Help(short bool) error {
+	if !short {
+		fmt.Printf(`simple-registry v%s
 A lightweight OCI-compatible container registry with RBAC support.
 Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
+`, Version)
+	}
 
+	fmt.Print(`
 Usage:
   simple-registry -genhash
     Generate a password hash and exit.
@@ -42,13 +46,18 @@ Options:
   -key string
     TLS key.
 
-Examples:
+`)
+
+	if !short {
+		fmt.Print(`Example:
   simple-registry \
     -adminname admin \
     -adminpwd secret \
     -datadir /var/lib/registry \
     -cert cert.pem \
     -key key.pem
-`, Version)
+`)
+	}
+
 	return nil
 }

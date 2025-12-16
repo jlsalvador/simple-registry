@@ -22,8 +22,12 @@ import (
 
 func main() {
 	flag.Usage = func() {
-		_ = cmd.Help()
+		_ = cmd.Help(true)
 	}
+
+	showHelp := false
+	flag.BoolVar(&showHelp, "help", false, "")
+	flag.BoolVar(&showHelp, "h", false, "")
 
 	genHash := flag.Bool("genhash", false, "Generate a hash for the given password and exit")
 
@@ -63,7 +67,7 @@ func main() {
 		)
 
 	default:
-		err = cmd.Help()
+		err = cmd.Help(false)
 	}
 
 	if err != nil {
