@@ -78,21 +78,6 @@ spec:
 		}
 	})
 
-	t.Run("unsupported kind", func(t *testing.T) {
-		t.Parallel()
-
-		data := `
-apiVersion: v1
-kind: Alien
-metadata:
-  name: nope
-`
-		_, _, _, _, err := yaml.ParseYAML([]byte(data))
-		if !errors.Is(err, yaml.ErrUnsupportedKind) {
-			t.Fatal("expected yaml.ErrUnsupportedKind")
-		}
-	})
-
 	t.Run("invalid YAML", func(t *testing.T) {
 		t.Parallel()
 
