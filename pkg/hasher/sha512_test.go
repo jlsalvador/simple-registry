@@ -22,7 +22,7 @@ import (
 )
 
 func TestSha512(t *testing.T) {
-	tests := []struct {
+	tcs := []struct {
 		name     string
 		data     []byte
 		expected string
@@ -32,7 +32,7 @@ func TestSha512(t *testing.T) {
 		{"binary", []byte{0x01, 0x02, 0x03}, "27864cc5219a951a7a6e52b8c8dddf6981d098da1658d96258c870b2c88dfbcb51841aea172a28bafa6a79731165584677066045c959ed0f9929688d04defc29"},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

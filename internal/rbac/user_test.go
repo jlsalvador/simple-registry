@@ -16,7 +16,7 @@ func TestIsPasswordValid(t *testing.T) {
 		}(),
 	}
 
-	tests := []struct {
+	tcs := []struct {
 		name          string
 		plainPassword string
 		want          bool
@@ -33,13 +33,13 @@ func TestIsPasswordValid(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := user.IsPasswordValid(tt.plainPassword)
-			if got != tt.want {
-				t.Errorf("IsPasswordValid() = %v, want %v", got, tt.want)
+			got := user.IsPasswordValid(tc.plainPassword)
+			if got != tc.want {
+				t.Errorf("IsPasswordValid() = %v, want %v", got, tc.want)
 			}
 		})
 	}

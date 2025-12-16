@@ -27,7 +27,7 @@ func TestParseActions(t *testing.T) {
 	someVerbs := []string{http.MethodGet, http.MethodPost, http.MethodDelete}
 	slices.Sort(someVerbs)
 
-	tests := []struct {
+	tcs := []struct {
 		name     string
 		input    []string
 		expected []string
@@ -52,15 +52,15 @@ func TestParseActions(t *testing.T) {
 			wantErr:  rbac.ErrInvalidVerb,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actions, err := rbac.ParseVerbs(tt.input)
-			if tt.wantErr != nil && !errors.Is(err, tt.wantErr) {
-				t.Errorf("ParseActions() error = %v, wantErr %v", err, tt.wantErr)
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			actions, err := rbac.ParseVerbs(tc.input)
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Errorf("ParseActions() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(actions, tt.expected) {
-				t.Errorf("ParseActions() got = %v, want %v", actions, tt.expected)
+			if !reflect.DeepEqual(actions, tc.expected) {
+				t.Errorf("ParseActions() got = %v, want %v", actions, tc.expected)
 				return
 			}
 		})

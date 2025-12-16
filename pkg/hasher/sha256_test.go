@@ -22,7 +22,7 @@ import (
 )
 
 func TestSha256(t *testing.T) {
-	tests := []struct {
+	tcs := []struct {
 		name     string
 		data     []byte
 		expected string
@@ -32,7 +32,7 @@ func TestSha256(t *testing.T) {
 		{"binary", []byte{0x01, 0x02, 0x03}, "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

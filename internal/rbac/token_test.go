@@ -10,8 +10,8 @@ import (
 func TestCleanupExpiredTokens(t *testing.T) {
 	e := rbac.Engine{
 		Tokens: []rbac.Token{
-			{"valid", "123", time.Now().Add(time.Hour), ""},
-			{"expired", "123", time.Now().Add(-1 * time.Hour), ""},
+			{"valid", "123", time.Now().Add(time.Hour), "admin"},
+			{"expired", "123", time.Now().Add(-1 * time.Hour), "admin"},
 		},
 	}
 

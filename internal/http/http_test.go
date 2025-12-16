@@ -24,7 +24,7 @@ import (
 
 func TestParseRequestContentRange(t *testing.T) {
 	// Test cases for ParseRequestContentRange function
-	testCases := []struct {
+	tcs := []struct {
 		name   string
 		header map[string][]string
 		start  int64
@@ -60,7 +60,7 @@ func TestParseRequestContentRange(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

@@ -22,7 +22,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	tests := []struct {
+	tcs := []struct {
 		name         string
 		digest       string
 		expectedAlgo string
@@ -73,7 +73,7 @@ func TestParse(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			algo, hash, err := digest.Parse(tc.digest)
 			if !errors.Is(err, tc.expectedErr) {
@@ -90,7 +90,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestNewHasher(t *testing.T) {
-	tests := []struct {
+	tcs := []struct {
 		name    string
 		wantErr error
 	}{
@@ -108,7 +108,7 @@ func TestNewHasher(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

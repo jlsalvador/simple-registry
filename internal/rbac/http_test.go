@@ -14,8 +14,8 @@ import (
 func TestGetUsernameFromHttpRequest(t *testing.T) {
 	e := &rbac.Engine{
 		Tokens: []rbac.Token{
-			{"", "123", time.Now().Add(time.Hour), "admin"},
-			{"", "456", time.Now().Add(-1 * time.Hour), "admin"},
+			{"token_a", "123", time.Now().Add(time.Hour), "admin"},
+			{"token_b", "456", time.Now().Add(-1 * time.Hour), "admin"},
 		},
 		Users: []rbac.User{
 			{"admin", func() string {
@@ -25,7 +25,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 	}
 
-	tests := []struct {
+	tcs := []struct {
 		name    string
 		request *http.Request
 		want    string
@@ -134,16 +134,16 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := e.GetUsernameFromHttpRequest(tt.request)
-			if tt.wantErr != nil && !errors.Is(err, tt.wantErr) {
-				t.Fatalf("got error = %v, want %v", err, tt.wantErr)
+			got, err := e.GetUsernameFromHttpRequest(tc.request)
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error = %v, want %v", err, tc.wantErr)
 			}
-			if got != tt.want {
-				t.Errorf("e.GetUsernameFromHttpRequest() = %v, want %v", got, tt.want)
+			if got != tc.want {
+				t.Errorf("e.GetUsernameFromHttpRequest() = %v, want %v", got, tc.want)
 			}
 		})
 	}
