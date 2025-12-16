@@ -90,9 +90,6 @@ func ParseYAML(d []byte) (
 				Subjects: subjects,
 				Scopes:   m.Spec.Scopes,
 			})
-
-			// default:
-			// 	return nil, nil, nil, nil, errors.Join(ErrUnsupportedKind, fmt.Errorf("unsupported kind %q", common.Kind))
 		}
 	}
 	return tokens, users, roles, roleBindings, nil
