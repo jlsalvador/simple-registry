@@ -2,8 +2,6 @@ package cmd
 
 import "fmt"
 
-var Version = "0.0.1765883021"
-
 func Help() error {
 	fmt.Printf(`simple-registry v%s
 A lightweight OCI-compatible container registry with RBAC support.

@@ -38,10 +38,15 @@ func main() {
 	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
 	dataDir := flag.String("datadir", "./data", "Data directory")
 
+	showVersion := flag.Bool("version", false, "Print the version and exit.")
+
 	flag.Parse()
 
 	var err error
 	switch {
+	case *showVersion:
+		err = cmd.ShowVersion()
+
 	case *genHash:
 		err = cmd.GenerateHash()
 
