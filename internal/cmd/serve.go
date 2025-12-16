@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
@@ -37,7 +38,16 @@ func Serve(
 
 	h := handler.NewHandler(config)
 
-	if certFile != "" && keyFile != "" {
+	isTLS := certFile != "" && keyFile != ""
+
+	fmt.Printf("Listening on %s (%s)\n", addr, func() string {
+		if isTLS {
+			return "HTTPS"
+		}
+		return "HTTP"
+	}())
+
+	if isTLS {
 		return http.ListenAndServeTLS(addr, certFile, keyFile, h)
 	}
 	return http.ListenAndServe(addr, h)
