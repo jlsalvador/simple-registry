@@ -11,17 +11,33 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func GetRBACEngineStatic(adminName, adminPwd string) rbac.Engine {
-	return rbac.Engine{
+func GetRBACEngineStatic(
+	adminName,
+	adminPwd,
+	adminPwdFile string,
+) (*rbac.Engine, error) {
+	var b []byte
+	var err error
+	if adminPwdFile != "" {
+		b, err = os.ReadFile(adminPwdFile)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		b, err = bcrypt.GenerateFromPassword([]byte(adminPwd), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+	}
+	pwd := string(b)
+
+	return &rbac.Engine{
 		Users: []rbac.User{
 			{
 				// Administrator.
-				Name: adminName,
-				PasswordHash: func() string {
-					pwd, _ := bcrypt.GenerateFromPassword([]byte(adminPwd), bcrypt.DefaultCost)
-					return string(pwd)
-				}(),
-				Groups: []string{"admins", "public"},
+				Name:         adminName,
+				PasswordHash: pwd,
+				Groups:       []string{"admins", "public"},
 			},
 			// {
 			// 	// Anonymous.
@@ -77,13 +93,13 @@ func GetRBACEngineStatic(adminName, adminPwd string) rbac.Engine {
 				Scopes:   []string{"^.*$"},
 			},
 		},
-	}
+	}, nil
 }
 
-func LoadRBACFromYamlDir(dirName string) rbac.Engine {
+func LoadRBACFromYamlDir(dirName string) (*rbac.Engine, error) {
 	entries, err := os.ReadDir(dirName)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	tokens := []rbac.Token{}
@@ -112,10 +128,10 @@ func LoadRBACFromYamlDir(dirName string) rbac.Engine {
 		}
 	}
 
-	return rbac.Engine{
+	return &rbac.Engine{
 		Tokens:       tokens,
 		Users:        users,
 		Roles:        roles,
 		RoleBindings: roleBindings,
-	}
+	}, nil
 }

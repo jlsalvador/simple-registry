@@ -21,14 +21,23 @@ import (
 )
 
 func main() {
+	flag.Usage = func() {
+		_ = cmd.Help()
+	}
+
 	genHash := flag.Bool("genhash", false, "Generate a hash for the given password and exit")
-	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
-	dataDir := flag.String("datadir", "./data", "Data directory")
+
+	rbacDir := flag.String("rbacdir", "", "Directory with YAML files for RBAC")
+
 	adminName := flag.String("adminname", "", "Administrator name")
 	adminPwd := flag.String("adminpwd", "", "Administrator password")
+	adminPwdFile := flag.String("adminpwd-file", "", "Fetch administrator password from file")
+
 	certFile := flag.String("cert", "", "TLS certificate")
 	keyFile := flag.String("key", "", "TLS key")
-	rbacDir := flag.String("rbacdir", "", "Directory with YAML files for RBAC")
+	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
+	dataDir := flag.String("datadir", "./data", "Data directory")
+
 	flag.Parse()
 
 	var err error
@@ -36,12 +45,13 @@ func main() {
 	case *genHash:
 		err = cmd.GenerateHash()
 
-	case *adminName != "" || *adminPwd != "":
+	case (*adminName != "" && *adminPwd != "") || *rbacDir != "":
 		err = cmd.Serve(
 			*addr,
 			*dataDir,
 			*adminName,
 			*adminPwd,
+			*adminPwdFile,
 			*certFile,
 			*keyFile,
 			*rbacDir,

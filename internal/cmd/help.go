@@ -20,27 +20,29 @@ Usage:
     Print the version and exit.
 
 Options:
-  Required:
-    -adminname string
-      Administrator username.
-    -adminpwd string
-      Administrator password
-      (use with care, ignored if -adminpwd-file is set).
-    -adminpwd-file string
-      File containing the administrator password
-      (takes precedence over -adminpwd).
+  -rbacdir string
+    Directory containing RBAC YAML definitions.
 
-  Optional flags:
-    -addr string
-      Listening address (default "0.0.0.0:5000")
-    -datadir string
-      Data directory (default "./data")
-    -cert string
-      TLS certificate (enables HTTPS).
-    -key string
-      TLS key.
-    -rbacdir string
-      Directory containing RBAC YAML definitions.
+  -adminname string
+    Administrator username.
+    (ignored if -rbacdir is set).
+  -adminpwd string
+    Administrator password.
+    (use with care)
+    (ignored if -adminpwd-file is set).
+    (ignored if -rbacdir is set).
+  -adminpwd-file string
+    File containing the administrator password.
+    (ignored if -rbacdir is set).
+
+  -addr string
+    Listening address (default "0.0.0.0:5000")
+  -datadir string
+    Data directory (default "./data")
+  -cert string
+    TLS certificate (enables HTTPS).
+  -key string
+    TLS key.
 
 Examples:
   simple-registry \

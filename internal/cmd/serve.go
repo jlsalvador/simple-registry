@@ -14,19 +14,24 @@ func Serve(
 	dataDir,
 	adminName,
 	adminPwd,
+	adminPwdFile,
 	certFile,
 	keyFile,
 	rbacDir string,
 ) error {
-	var rbacEngine rbac.Engine
+	var rbacEngine *rbac.Engine
+	var err error
 	if rbacDir != "" {
-		rbacEngine = config.LoadRBACFromYamlDir(rbacDir)
+		rbacEngine, err = config.LoadRBACFromYamlDir(rbacDir)
 	} else {
-		rbacEngine = config.GetRBACEngineStatic(adminName, adminPwd)
+		rbacEngine, err = config.GetRBACEngineStatic(adminName, adminPwd, adminPwdFile)
+	}
+	if err != nil {
+		return err
 	}
 
 	config := config.Config{
-		Rbac: rbacEngine,
+		Rbac: *rbacEngine,
 		Data: filesystem.NewFilesystemDataStorage(dataDir),
 	}
 
