@@ -20,7 +20,7 @@ import (
 	"io/fs"
 	"net/http"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -74,10 +74,7 @@ func (m *ServeMux) TagsList(
 		return
 	}
 
-	// Sort tags alphabetically (case-sensitive).
-	sort.SliceStable(tags, func(i, j int) bool {
-		return tags[i] < tags[j]
-	})
+	slices.Sort(tags)
 
 	// "last" is an optional parameter.
 	// If it's provided, remove all tags BEFORE and INCLUDING it.
