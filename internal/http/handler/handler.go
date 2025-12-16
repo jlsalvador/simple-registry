@@ -226,5 +226,5 @@ func NewHandler(cfg config.Config) http.Handler {
 	}
 	mux.registerRoutes()
 
-	return mux.mux
+	return LoggingMiddleware(mux.mux)
 }
