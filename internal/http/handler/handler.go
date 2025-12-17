@@ -16,39 +16,17 @@ package handler
 
 import (
 	"net/http"
-	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/pkg/http/route"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
-
-type headResponseWriter struct {
-	http.ResponseWriter
-}
-
-func (h *headResponseWriter) Write(b []byte) (int, error) {
-	// Discart response body for HEAD.
-	return len(b), nil
-}
 
 type ServeMux struct {
 	cfg config.Config
 	mux *http.ServeMux
-}
-
-type route struct {
-	Method     string
-	Regexp     *regexp.Regexp
-	ParamIndex map[string]int
-	Handler    http.HandlerFunc
-}
-
-func setPathParams(r *http.Request, params map[string]int, match []string) {
-	for name, idx := range params {
-		r.SetPathValue(name, match[idx])
-	}
 }
 
 // registerRoutes registers the routes for the HTTP server.
@@ -57,151 +35,104 @@ func (m *ServeMux) registerRoutes() {
 	// - Routes are matched in order.
 	// - First RegExp match wins.
 	// - More specific paths MUST appear before generic ones.
-	var routes = []route{
-		{
+	var routes = []route.Route{
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile(`^/v2/?$`),
-			nil,
+			`^/v2/?$`,
 			m.Index,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile(`^/v2/_catalog/?$`),
-			nil,
+			`^/v2/_catalog/?$`,
 			m.CatalogList,
-		},
+		),
 
 		// Referrers:
-		{
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/referrers/(?P<digest>" + registry.RegExpDigest + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/referrers/(?P<digest>"+registry.RegExpDigest+")/?$",
 			m.ReferrersGet,
-		},
+		),
 
 		// Tags:
-		{
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/tags/list/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/tags/list/?$",
 			m.TagsList,
-		},
+		),
 
 		// Blobs:
-		{
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/(?P<digest>" + registry.RegExpDigest + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/(?P<digest>"+registry.RegExpDigest+")/?$",
 			m.BlobsGet,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodDelete,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/(?P<digest>" + registry.RegExpDigest + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/(?P<digest>"+registry.RegExpDigest+")/?$",
 			m.BlobsDelete,
-		},
+		),
 
 		// Blobs uploads:
-		{
+		route.NewRoute(
 			http.MethodPost,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/uploads/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/?$",
 			m.BlobsUploadsPost,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/uploads/(?P<uuid>" + registry.RegExpUUID + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
 			m.BlobsUploadsGet,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodPatch,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/uploads/(?P<uuid>" + registry.RegExpUUID + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
 			m.BlobsUploadsPatch,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodPut,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/uploads/(?P<uuid>" + registry.RegExpUUID + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
 			m.BlobsUploadsPut,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodDelete,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/blobs/uploads/(?P<uuid>" + registry.RegExpUUID + ")/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
 			m.BlobsUploadsDelete,
-		},
+		),
 
 		// Manifests:
-		{
+		route.NewRoute(
 			http.MethodGet,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/manifests/(?P<reference>(?:" + registry.RegExpTag + ")|(?:" + registry.RegExpDigest + "))/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
 			m.ManifestsGet,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodPut,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/manifests/(?P<reference>(?:" + registry.RegExpTag + ")|(?:" + registry.RegExpDigest + "))/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
 			m.ManifestsPut,
-		},
-		{
+		),
+		route.NewRoute(
 			http.MethodDelete,
-			regexp.MustCompile("^/v2/(?P<name>" + registry.RegExpName + ")/manifests/(?P<reference>(?:" + registry.RegExpTag + ")|(?:" + registry.RegExpDigest + "))/?$"),
-			nil,
+			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
 			m.ManifestsDelete,
-		},
-	}
-	for i, rt := range routes {
-		paramIndex := make(map[string]int)
-
-		for idx, name := range rt.Regexp.SubexpNames() {
-			if name != "" {
-				paramIndex[name] = idx
-			}
-		}
-
-		routes[i].ParamIndex = paramIndex
+		),
 	}
 
 	m.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		pathMatched := false
 		allowed := map[string]struct{}{}
 
 		for _, route := range routes {
-			match := route.Regexp.FindStringSubmatch(r.URL.Path)
-			if match == nil {
-				continue
-			}
-
-			pathMatched = true
-			allowed[route.Method] = struct{}{}
-			if route.Method == http.MethodGet {
-				allowed[http.MethodHead] = struct{}{}
-			}
-
-			if r.Method == http.MethodHead && route.Method == http.MethodGet {
-				// Do GET as HEAD.
-				setPathParams(r, route.ParamIndex, match)
-
-				// Discart response body for HEAD.
-				hw := &headResponseWriter{ResponseWriter: w}
-
-				route.Handler(hw, r)
+			if matchUrl, matchMethod := route.Handler(w, r); matchUrl && matchMethod {
 				return
+			} else if matchUrl {
+				allowed[route.Method] = struct{}{}
+				if route.Method == http.MethodGet {
+					allowed[http.MethodHead] = struct{}{}
+				}
 			}
-
-			if r.Method != route.Method {
-				continue
-			}
-
-			setPathParams(r, route.ParamIndex, match)
-			route.Handler(w, r)
-			return
 		}
 
-		if pathMatched {
+		if len(allowed) > 0 {
 			methods := make([]string, 0, len(allowed))
 			for m := range allowed {
 				methods = append(methods, m)

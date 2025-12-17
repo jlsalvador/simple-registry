@@ -18,12 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
-	httpInternal "github.com/jlsalvador/simple-registry/internal/http"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 
 	u "github.com/google/uuid"
@@ -36,40 +36,40 @@ func blobsUploadsPostMount(
 	repo string,
 	from string,
 	mount string,
-	w http.ResponseWriter,
+	w netHttp.ResponseWriter,
 ) {
 	f, _, err := cfg.Data.BlobsGet(from, mount)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
 
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	if err := cfg.Data.BlobsUploadWrite(repo, uuid, f, -1); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	if err := cfg.Data.BlobsUploadCommit(repo, uuid, mount); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	location := fmt.Sprintf("/v2/%s/blobs/%s", repo, mount)
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Content-Digest", mount)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(netHttp.StatusCreated)
 }
 
 // blobsUploadsPostSingle uploads blob in a single POST.
@@ -78,26 +78,26 @@ func blobsUploadsPostSingle(
 	cfg config.Config,
 	repo string,
 	digest string,
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	if err := cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, 0); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	if err := cfg.Data.BlobsUploadCommit(repo, uuid, digest); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	location := fmt.Sprintf("/v2/%s/blobs/%s", repo, digest)
 	w.Header().Set("Location", location)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(netHttp.StatusCreated)
 }
 
 // blobsUploadsPostThenPut creates upload blob session.
@@ -105,11 +105,11 @@ func blobsUploadsPostSingle(
 func blobsUploadsPostThenPut(
 	cfg config.Config,
 	repo string,
-	w http.ResponseWriter,
+	w netHttp.ResponseWriter,
 ) {
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -118,7 +118,7 @@ func blobsUploadsPostThenPut(
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Upload-UUID", uuid)
 	w.Header().Set("Range", "0-0")
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(netHttp.StatusAccepted)
 }
 
 // BlobsUploadsPost handles the POST request for uploading blobs.
@@ -149,26 +149,26 @@ func blobsUploadsPostThenPut(
 //   - 404 Not Found - Blob from other repository not found.
 //   - 500 Internal Server Error
 func (m *ServeMux) BlobsUploadsPost(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user can push to repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
@@ -177,8 +177,8 @@ func (m *ServeMux) BlobsUploadsPost(
 	from := r.URL.Query().Get("from")
 	if mount != "" && from != "" {
 		// Check if the user can pull the other repository.
-		if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
-			w.WriteHeader(http.StatusForbidden)
+		if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
+			w.WriteHeader(netHttp.StatusForbidden)
 			return
 		}
 
@@ -214,39 +214,39 @@ func (m *ServeMux) BlobsUploadsPost(
 }
 
 func (m *ServeMux) BlobsUploadsGet(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPost) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -255,7 +255,7 @@ func (m *ServeMux) BlobsUploadsGet(
 	w.Header().Set("Location", location)
 	w.Header().Set("Range", fmt.Sprintf("0-%d", size-1))
 	w.Header().Set("Docker-Upload-UUID", uuid)
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(netHttp.StatusNoContent)
 }
 
 // BlobsUploadsPatch handles PATCH requests for blob uploads.
@@ -280,79 +280,79 @@ func (m *ServeMux) BlobsUploadsGet(
 //
 // [UUID]: https://www.rfc-editor.org/rfc/rfc4122
 func (m *ServeMux) BlobsUploadsPatch(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	// Validate request
 	if r.Header.Get("Content-Type") != "application/octet-stream" {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	var start int64 = -1
 
-	if rngStart, _, err := httpInternal.ParseRequestContentRange(r); err == nil {
+	if rngStart, _, err := http.ParseRequestContentRange(r); err == nil {
 		start = rngStart
 	}
 
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPatch) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	// Check if the range is valid.
 	if start >= 0 && start != size {
-		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+		w.WriteHeader(netHttp.StatusRequestedRangeNotSatisfiable)
 		return
 	}
 
 	if err := m.cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, start); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	// Update the size of the blob.
 	size, err = m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -361,7 +361,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	w.Header().Set("Location", location)
 	w.Header().Set("Range", fmt.Sprintf("0-%d", size-1))
 	w.Header().Set("Docker-Upload-UUID", uuid)
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(netHttp.StatusAccepted)
 }
 
 // BlobsUploadsPut handles the PUT request for blobs uploads.
@@ -387,40 +387,40 @@ func (m *ServeMux) BlobsUploadsPatch(
 //
 // [UUID]: https://www.rfc-editor.org/rfc/rfc4122
 func (m *ServeMux) BlobsUploadsPut(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.URL.Query().Get("digest")
 	if _, _, err := d.Parse(digest); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodPut) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPut) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
@@ -428,18 +428,18 @@ func (m *ServeMux) BlobsUploadsPut(
 		// Optionally, PUT can upload the last blob chunk data.
 
 		var start int64 = -1
-		if rngStart, _, err := httpInternal.ParseRequestContentRange(r); err == nil {
+		if rngStart, _, err := http.ParseRequestContentRange(r); err == nil {
 			start = rngStart
 		}
 
 		if err := m.cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, start); err != nil {
 			// Docker expects 404 when the blob does not exist
 			if errors.Is(err, fs.ErrNotExist) {
-				w.WriteHeader(http.StatusNotFound)
+				w.WriteHeader(netHttp.StatusNotFound)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(netHttp.StatusInternalServerError)
 			return
 		}
 
@@ -449,11 +449,11 @@ func (m *ServeMux) BlobsUploadsPut(
 	if err := m.cfg.Data.BlobsUploadCommit(repo, uuid, digest); err != nil {
 		// Docker expects 404 when the blob does not exist
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -461,7 +461,7 @@ func (m *ServeMux) BlobsUploadsPut(
 
 	w.Header().Set("Location", location)
 	w.Header().Set("Docker-Content-Digest", digest)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(netHttp.StatusCreated)
 }
 
 // BlobsUploadsDelete delete a blob upload in progress.
@@ -484,44 +484,44 @@ func (m *ServeMux) BlobsUploadsPut(
 //
 // [UUID]: https://www.rfc-editor.org/rfc/rfc4122
 func (m *ServeMux) BlobsUploadsDelete(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user can push blobs into the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodDelete) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
 	if err := m.cfg.Data.BlobsUploadCancel(repo, uuid); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(netHttp.StatusNoContent)
 }

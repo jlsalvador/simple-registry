@@ -19,7 +19,7 @@ import (
 	netHttp "net/http"
 	"testing"
 
-	"github.com/jlsalvador/simple-registry/internal/http"
+	"github.com/jlsalvador/simple-registry/pkg/http"
 )
 
 func TestParseRequestContentRange(t *testing.T) {
