@@ -115,7 +115,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 				},
 			},
 			want:    "",
-			wantErr: rbac.ErrBasicAuthInvalid,
+			wantErr: rbac.ErrBadRequest,
 		},
 		{
 			name: "invalid basic auth without password",
@@ -125,13 +125,13 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 				},
 			},
 			want:    "",
-			wantErr: rbac.ErrBasicAuthInvalid,
+			wantErr: rbac.ErrBadRequest,
 		},
 		{
 			name:    "invalid request",
 			request: nil,
 			want:    "",
-			wantErr: rbac.ErrHttpRequestInvalid,
+			wantErr: rbac.ErrBadRequest,
 		},
 	}
 

@@ -26,16 +26,15 @@ import (
 
 const AnonymousUsername = "anonymous"
 
-var ErrHttpRequestInvalid = errors.New("invalid http request")
-var ErrBasicAuthInvalid = errors.New("invalid basic auth credentials")
-var ErrAuthCredentialsInvalid = errors.New("invalid authorization credentials")
+var ErrBadRequest = errors.New("bad request")
+var ErrUnauthorized = errors.New("unauthorized")
 
 var httpAuthBasicRegexp = regexp.MustCompile(`^Basic\s+([a-zA-Z0-9+/]+={0,2})$`)
 var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$`)
 
 func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 	if r == nil {
-		return "", ErrHttpRequestInvalid
+		return "", ErrBadRequest
 	}
 
 	v := r.Header.Get("Authorization")
@@ -46,12 +45,12 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
-			return "", errors.Join(ErrBasicAuthInvalid, err)
+			return "", errors.Join(ErrBadRequest, err)
 		}
 
 		parts := strings.SplitN(string(decoded), ":", 2)
 		if len(parts) != 2 {
-			return "", ErrBasicAuthInvalid
+			return "", ErrBadRequest
 		}
 
 		username := parts[0]
@@ -63,7 +62,7 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 			return e.Users[i].Name, nil
 		}
 
-		return "", ErrAuthCredentialsInvalid
+		return "", ErrUnauthorized
 	}
 
 	// Bearer token auth.
@@ -82,8 +81,8 @@ func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
 			}
 		}
 
-		return "", ErrAuthCredentialsInvalid
+		return "", ErrUnauthorized
 	}
 
-	return "", ErrAuthCredentialsInvalid
+	return "", ErrUnauthorized
 }
