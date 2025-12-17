@@ -123,9 +123,15 @@ func (m *ServeMux) registerRoutes() {
 		allowed := map[string]struct{}{}
 
 		for _, route := range routes {
-			if matchUrl, matchMethod := route.Handler(w, r); matchUrl && matchMethod {
+			route.Handler(w, r)
+
+			if route.IsMatchUrl && route.IsMatchMethod {
 				return
-			} else if matchUrl {
+			}
+
+			// Save the route method if the URL matches but not the method, for
+			// the later Allow HTTP header.
+			if route.IsMatchUrl && !route.IsMatchMethod {
 				allowed[route.Method] = struct{}{}
 				if route.Method == http.MethodGet {
 					allowed[http.MethodHead] = struct{}{}
@@ -134,6 +140,7 @@ func (m *ServeMux) registerRoutes() {
 		}
 
 		if len(allowed) > 0 {
+			// Print Allow HTTP Header.
 			methods := make([]string, 0, len(allowed))
 			for m := range allowed {
 				methods = append(methods, m)
@@ -141,9 +148,11 @@ func (m *ServeMux) registerRoutes() {
 			slices.Sort(methods)
 			w.Header().Set("Allow", strings.Join(methods, ", "))
 			w.WriteHeader(http.StatusMethodNotAllowed)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
+			return
 		}
+
+		// 404.
+		w.WriteHeader(http.StatusNotFound)
 	})
 }
 

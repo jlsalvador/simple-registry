@@ -24,6 +24,9 @@ type Route struct {
 	rePattern *regexp.Regexp
 	next      http.HandlerFunc
 
+	IsMatchUrl    bool
+	IsMatchMethod bool
+
 	// Used to precalculate the path parameters.
 	paramIndex map[string]int
 }
@@ -34,10 +37,12 @@ func (rt *Route) setPathParams(r *http.Request, match []string) {
 	}
 }
 
-func (rt *Route) Handler(w http.ResponseWriter, r *http.Request) (matchUrl bool, matchMethod bool) {
+func (rt *Route) Handler(w http.ResponseWriter, r *http.Request) {
 	match := rt.rePattern.FindStringSubmatch(r.URL.Path)
 	if match == nil {
-		return false, false
+		rt.IsMatchUrl = false
+		rt.IsMatchMethod = false
+		return
 	}
 
 	// Method HEAD == GET, but without body.
@@ -48,13 +53,17 @@ func (rt *Route) Handler(w http.ResponseWriter, r *http.Request) (matchUrl bool,
 	}
 
 	if r.Method != rt.Method {
-		return true, false
+		rt.IsMatchUrl = true
+		rt.IsMatchMethod = false
+		return
 	}
 
 	rt.setPathParams(r, match)
-	rt.next(w, r)
 
-	return true, true
+	rt.IsMatchUrl = true
+	rt.IsMatchMethod = true
+
+	rt.next(w, r)
 }
 
 func NewRoute(method string, pattern string, next http.HandlerFunc) Route {
