@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/pkg/http/log"
 	"github.com/jlsalvador/simple-registry/pkg/http/route"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -157,5 +158,5 @@ func NewHandler(cfg config.Config) http.Handler {
 	}
 	mux.registerRoutes()
 
-	return LoggingMiddleware(mux.mux)
+	return log.LoggingMiddleware(mux.mux)
 }
