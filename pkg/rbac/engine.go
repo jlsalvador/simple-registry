@@ -26,7 +26,7 @@ type Engine struct {
 	RoleBindings []RoleBinding
 }
 
-func (e *Engine) IsAllowed(username string, resource string, repo string, verb string) bool {
+func (e *Engine) IsAllowed(username string, resource string, scope string, verb string) bool {
 	// Get user from "username".
 	var user *User
 	if i := slices.IndexFunc(e.Users, func(u User) bool {
@@ -52,10 +52,10 @@ func (e *Engine) IsAllowed(username string, resource string, repo string, verb s
 			continue
 		}
 
-		// Match scopes and "repo".
+		// Match scopes.
 		if i := slices.IndexFunc(rb.Scopes, func(s string) bool {
 			re, err := regexp.Compile(s)
-			return err == nil && re.MatchString(repo)
+			return err == nil && re.MatchString(scope)
 		}); i < 0 {
 			continue
 		}
