@@ -7,7 +7,7 @@ import (
 	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
 	"github.com/jlsalvador/simple-registry/internal/http/handler"
-	"github.com/jlsalvador/simple-registry/internal/rbac"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
 func Serve(

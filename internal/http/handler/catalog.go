@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
 // Index just for authorization testing and ping.

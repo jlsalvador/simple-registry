@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
-	"github.com/jlsalvador/simple-registry/internal/rbac/yaml"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
+	"github.com/jlsalvador/simple-registry/pkg/rbac/yaml"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

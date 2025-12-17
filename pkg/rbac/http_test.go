@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlsalvador/simple-registry/internal/rbac"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
