@@ -172,7 +172,7 @@ func (m *ServeMux) BlobsUploadsPost(
 		return
 	}
 
-	// Check if the user can push to repository.
+	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
 		w.WriteHeader(netHttp.StatusForbidden)
 		return
@@ -289,7 +289,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	// Validate request
+	// Validate request Content-Type header.
 	if r.Header.Get("Content-Type") != "application/octet-stream" {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
@@ -514,7 +514,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 		return
 	}
 
-	// Check if the user can push blobs into the repository.
+	// Check if the user can delete blobs from the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
 		w.WriteHeader(netHttp.StatusForbidden)
 		return
