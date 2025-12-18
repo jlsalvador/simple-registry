@@ -31,6 +31,55 @@ const AnonymousUsername = "anonymous"
 var httpAuthBasicRegexp = regexp.MustCompile(`^Basic\s+([a-zA-Z0-9+/]+={0,2})$`)
 var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$`)
 
+func (e *Engine) getUsernameFromAuthBasic(matches []string, isAnonymousUserEnabled bool) (string, error) {
+	encoded := matches[1]
+
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", errors.Join(http.ErrBadRequest, err)
+	}
+
+	parts := strings.SplitN(string(decoded), ":", 2)
+	if len(parts) != 2 {
+		return "", http.ErrBadRequest
+	}
+
+	username := parts[0]
+	password := parts[1]
+
+	// Empty username & password could be a valid anonymous user.
+	if username == "" && password == "" && isAnonymousUserEnabled {
+		return AnonymousUsername, nil
+	}
+
+	// Check if the user exists and password is valid.
+	if i := slices.IndexFunc(e.Users, func(user User) bool {
+		return user.Name == username && user.IsPasswordValid(password)
+	}); i >= 0 {
+		return e.Users[i].Name, nil
+	}
+
+	return "", http.ErrUnauthorized
+}
+
+func (e *Engine) getUsernameFromAuthBearer(matches []string) (string, error) {
+	token := matches[1]
+
+	for _, t := range e.Tokens {
+		if t.Value != token || time.Now().After(t.ExpiresAt) {
+			continue
+		}
+
+		for _, u := range e.Users {
+			if u.Name == t.Username {
+				return u.Name, nil
+			}
+		}
+	}
+
+	return "", http.ErrUnauthorized
+}
+
 // GetUsernameFromHttpRequest extracts the username from an HTTP request.
 //
 // Returns [AnonymousUsername] if the request does not contain any
@@ -48,53 +97,12 @@ func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) 
 
 	// Basic auth.
 	if matches := httpAuthBasicRegexp.FindStringSubmatch(v); len(matches) == 2 {
-		encoded := matches[1]
-
-		decoded, err := base64.StdEncoding.DecodeString(encoded)
-		if err != nil {
-			return "", errors.Join(http.ErrBadRequest, err)
-		}
-
-		parts := strings.SplitN(string(decoded), ":", 2)
-		if len(parts) != 2 {
-			return "", http.ErrBadRequest
-		}
-
-		username := parts[0]
-		password := parts[1]
-
-		// Empty username & password could be a valid anonymous user.
-		if username == "" && password == "" && isAnonymousUserEnabled {
-			return AnonymousUsername, nil
-		}
-
-		// Check if the user exists and password is valid.
-		if i := slices.IndexFunc(e.Users, func(user User) bool {
-			return user.Name == username && user.IsPasswordValid(password)
-		}); i >= 0 {
-			return e.Users[i].Name, nil
-		}
-
-		return "", http.ErrUnauthorized
+		return e.getUsernameFromAuthBasic(matches, isAnonymousUserEnabled)
 	}
 
 	// Bearer token auth.
 	if matches := httpAuthBearerRegexp.FindStringSubmatch(v); len(matches) == 2 {
-		token := matches[1]
-
-		for _, t := range e.Tokens {
-			if t.Value != token || time.Now().After(t.ExpiresAt) {
-				continue
-			}
-
-			for _, u := range e.Users {
-				if u.Name == t.Username {
-					return u.Name, nil
-				}
-			}
-		}
-
-		return "", http.ErrUnauthorized
+		return e.getUsernameFromAuthBearer(matches)
 	}
 
 	// No authentication header found, return anonymous user if there is one.
