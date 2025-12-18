@@ -41,7 +41,13 @@ func blobsUploadsPostMount(
 	f, _, err := cfg.Data.BlobsGet(from, mount)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(netHttp.StatusNotFound)
+			// Alternatively, if a registry does not support cross-repository
+			// mounting or is unable to mount the requested blob, it SHOULD
+			// return a 202. This indicates that the upload session has begun
+			// and that the client MAY proceed with the upload.
+			//
+			// https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md#mounting-a-blob-from-another-repository
+			blobsUploadsPostThenPut(cfg, repo, w)
 			return
 		}
 
