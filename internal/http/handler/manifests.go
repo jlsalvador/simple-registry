@@ -27,6 +27,17 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
+func getContentType(manifest []byte) string {
+	var aux struct {
+		MediaType string `json:"mediaType"`
+		Manifests []any  `json:"manifests"`
+	}
+	if err := json.Unmarshal(manifest, &aux); err != nil {
+		return "application/vnd.oci.image.manifest.v1+json"
+	}
+	return aux.MediaType
+}
+
 // ManifestsGet returns the manifest blob.
 //
 // # Route pattern:
@@ -91,12 +102,19 @@ func (m *ServeMux) ManifestsGet(
 	}
 	defer blob.Close()
 
+	manifest, err := io.ReadAll(blob)
+	if err != nil {
+		w.WriteHeader(netHttp.StatusInternalServerError)
+		return
+	}
+	contentType := getContentType(manifest)
+
 	// Write the manifest blob to the response.
 	header := w.Header()
-	header.Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+	header.Set("Content-Type", contentType)
 	header.Set("Content-Length", fmt.Sprint(size))
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, blob)
+	w.WriteHeader(netHttp.StatusOK)
+	w.Write(manifest)
 }
 
 // ManifestsPut write a manifest to the data storage.
