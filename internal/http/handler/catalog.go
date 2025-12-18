@@ -33,8 +33,8 @@ import (
 //   - 200 OK
 //   - 401 Unauthorized
 func (m *ServeMux) Index(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -50,7 +50,7 @@ func (m *ServeMux) Index(
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(netHttp.StatusOK)
 }
 
 // CatalogList returns a list of the repositories.
@@ -65,8 +65,8 @@ func (m *ServeMux) Index(
 //   - 403 Forbidden
 //   - 500 Internal Server Error
 func (m *ServeMux) CatalogList(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -84,7 +84,7 @@ func (m *ServeMux) CatalogList(
 	// Fetch repositories from storage.
 	repos, err := m.cfg.Data.RepositoriesList()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -93,6 +93,6 @@ func (m *ServeMux) CatalogList(
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(netHttp.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }

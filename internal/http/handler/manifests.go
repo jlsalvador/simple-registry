@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
@@ -43,8 +43,8 @@ import (
 //   - 401 Unauthorized
 //   - 500 Internal Server Error
 func (m *ServeMux) ManifestsGet(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -56,7 +56,7 @@ func (m *ServeMux) ManifestsGet(
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 	rbacRepo := repo
@@ -68,7 +68,7 @@ func (m *ServeMux) ManifestsGet(
 	} else if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
 		rbacRepo += ":" + reference
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -82,11 +82,11 @@ func (m *ServeMux) ManifestsGet(
 	blob, size, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	defer blob.Close()
@@ -117,8 +117,8 @@ func (m *ServeMux) ManifestsGet(
 //   - 413 Payload Too Large
 //   - 500 Internal Server Error
 func (m *ServeMux) ManifestsPut(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -130,7 +130,7 @@ func (m *ServeMux) ManifestsPut(
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 	rbacRepo := repo
@@ -143,7 +143,7 @@ func (m *ServeMux) ManifestsPut(
 		// "reference" is a tag.
 		rbacRepo += ":" + reference
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -157,21 +157,21 @@ func (m *ServeMux) ManifestsPut(
 	defer r.Body.Close()
 	dgst, err := m.cfg.Data.ManifestPut(repo, reference, r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	// Re-read the just written manifest.
 	f, _, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
 
 	var manifest = &registry.Manifest{}
 	if err := json.NewDecoder(f).Decode(manifest); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 	header.Set("Location", location)
 	header.Set("Docker-Content-Digest", dgst)
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(netHttp.StatusCreated)
 }
 
 // ManifestsDelete deletes a manifest from the registry.
@@ -203,8 +203,8 @@ func (m *ServeMux) ManifestsPut(
 //   - 404 Not Found
 //   - 405 Method Not Allowed
 func (m *ServeMux) ManifestsDelete(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -216,7 +216,7 @@ func (m *ServeMux) ManifestsDelete(
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 	rbacRepo := repo
@@ -228,7 +228,7 @@ func (m *ServeMux) ManifestsDelete(
 	} else if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
 		rbacRepo += ":" + reference
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -239,13 +239,13 @@ func (m *ServeMux) ManifestsDelete(
 
 	if err := m.cfg.Data.ManifestDelete(repo, reference); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(netHttp.StatusAccepted)
 }

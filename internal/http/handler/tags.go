@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -45,8 +45,8 @@ import (
 //   - 401 Unauthorized
 //   - 500 Internal Server Error
 func (m *ServeMux) TagsList(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -58,7 +58,7 @@ func (m *ServeMux) TagsList(
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -66,11 +66,11 @@ func (m *ServeMux) TagsList(
 	if err != nil {
 		// Some repos may not exist, Docker expects 404
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
@@ -102,12 +102,12 @@ func (m *ServeMux) TagsList(
 	if n != "" {
 		nInt, err := strconv.ParseInt(n, 10, 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(netHttp.StatusBadRequest)
 			return
 		}
 		// Limit the number of tags returned.
 		if nInt < 0 || nInt > int64(len(tags)) {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(netHttp.StatusBadRequest)
 			return
 		}
 		tags = tags[:nInt]
@@ -129,6 +129,6 @@ func (m *ServeMux) TagsList(
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(netHttp.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }

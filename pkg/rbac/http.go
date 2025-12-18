@@ -17,7 +17,7 @@ package rbac
 import (
 	"encoding/base64"
 	"errors"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 	"slices"
 	"strings"
@@ -32,7 +32,11 @@ var ErrUnauthorized = errors.New("unauthorized")
 var httpAuthBasicRegexp = regexp.MustCompile(`^Basic\s+([a-zA-Z0-9+/]+={0,2})$`)
 var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$`)
 
-func (e *Engine) GetUsernameFromHttpRequest(r *http.Request) (string, error) {
+// GetUsernameFromHttpRequest extracts the username from an HTTP request.
+//
+// Returns [AnonymousUsername] if the request does not contain any
+// authorization header and there is an anonymous user in RBAC users.
+func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) {
 	if r == nil {
 		return "", ErrBadRequest
 	}

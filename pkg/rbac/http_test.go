@@ -3,7 +3,7 @@ package rbac_test
 import (
 	"encoding/base64"
 	"errors"
-	"net/http"
+	netHttp "net/http"
 	"testing"
 	"time"
 
@@ -28,14 +28,14 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 
 	tcs := []struct {
 		name    string
-		request *http.Request
+		request *netHttp.Request
 		want    string
 		wantErr error
 	}{
 		{
 			name: "valid user",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("admin:admin"))},
 				},
 			},
@@ -44,8 +44,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "valid basic auth with blank password",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("blank_password:"))},
 				},
 			},
@@ -54,8 +54,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "invalid user",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("user:password"))},
 				},
 			},
@@ -64,8 +64,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "valid token",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Bearer 123"},
 				},
 			},
@@ -74,8 +74,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "expired token",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Bearer 456"},
 				},
 			},
@@ -84,8 +84,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "unreferenced token",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Bearer 789"},
 				},
 			},
@@ -94,14 +94,14 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name:    "without auth header",
-			request: &http.Request{},
+			request: &netHttp.Request{},
 			want:    "",
 			wantErr: nil,
 		},
 		{
 			name: "unsupported auth scheme",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Digest 123"},
 				},
 			},
@@ -109,8 +109,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "invalid basic auth value",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Basic 123"},
 				},
 			},
@@ -119,8 +119,8 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 		},
 		{
 			name: "invalid basic auth without password",
-			request: &http.Request{
-				Header: http.Header{
+			request: &netHttp.Request{
+				Header: netHttp.Header{
 					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("admin"))},
 				},
 			},
@@ -156,7 +156,7 @@ func TestGetUsernameFromHttpRequest_Anonymous(t *testing.T) {
 			{rbac.AnonymousUsername, "hash", nil},
 		},
 	}
-	r := &http.Request{}
+	r := &netHttp.Request{}
 
 	username, err := e.GetUsernameFromHttpRequest(r)
 	if err != nil {

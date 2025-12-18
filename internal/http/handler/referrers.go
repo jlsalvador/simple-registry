@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
@@ -13,8 +13,8 @@ import (
 )
 
 func (m *ServeMux) ReferrersGet(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
@@ -26,14 +26,14 @@ func (m *ServeMux) ReferrersGet(
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	dgst := r.PathValue("digest")
 	if _, _, err := digest.Parse(dgst); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -46,10 +46,10 @@ func (m *ServeMux) ReferrersGet(
 	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
@@ -57,6 +57,6 @@ func (m *ServeMux) ReferrersGet(
 	header := w.Header()
 	header.Set("Content-Type", "application/vnd.oci.image.index.v1+json")
 	header.Set("Content-Length", fmt.Sprint(size))
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(netHttp.StatusOK)
 	_, _ = io.Copy(w, f)
 }

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
+	netHttp "net/http"
 	"regexp"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
@@ -44,33 +44,33 @@ import (
 //   - 404 Not Found
 //   - 500 Internal Server Error
 func (m *ServeMux) BlobsGet(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.PathValue("digest")
 	if _, _, err := d.Parse(digest); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user have permission to pull the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodGet) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodGet) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
@@ -78,18 +78,18 @@ func (m *ServeMux) BlobsGet(
 	if err != nil {
 		// Docker expects 404 when the blob does not exist.
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	defer blob.Close()
 
 	w.Header().Set("Docker-Content-Digest", digest)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(netHttp.StatusOK)
 	_, _ = io.Copy(w, blob)
 }
 
@@ -111,33 +111,33 @@ func (m *ServeMux) BlobsGet(
 //   - 401 Unauthorized
 //   - 500 Internal Server Error
 func (m *ServeMux) BlobsDelete(
-	w http.ResponseWriter,
-	r *http.Request,
+	w netHttp.ResponseWriter,
+	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(netHttp.StatusUnauthorized)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.PathValue("digest")
 	if _, _, err := d.Parse(digest); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// Check if the user have permission to delete blobs.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, http.MethodDelete) {
-		w.WriteHeader(http.StatusForbidden)
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
+		w.WriteHeader(netHttp.StatusForbidden)
 		return
 	}
 
@@ -145,14 +145,14 @@ func (m *ServeMux) BlobsDelete(
 	if err != nil {
 		// Docker expects 404 when the blob does not exist.
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(netHttp.StatusNotFound)
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	// Docker Registry spec: return 202 Accepted
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(netHttp.StatusAccepted)
 }
