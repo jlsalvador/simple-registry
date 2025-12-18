@@ -18,22 +18,47 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	pkgLog "github.com/jlsalvador/simple-registry/pkg/log"
 )
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Before.
 		start := time.Now()
 
-		next.ServeHTTP(w, r)
+		lrw := &loggingResponseWriter{
+			ResponseWriter: w,
+		}
 
-		// After.
-		fmt.Printf(
-			"%s %s %s %s\n",
-			r.RemoteAddr,
-			r.Method,
-			r.URL.Path,
-			time.Since(start),
+		next.ServeHTTP(lrw, r)
+
+		duration := time.Since(start)
+
+		remoteAddr := getClientIP(r)
+
+		userAgent := r.UserAgent()
+		if userAgent == "" {
+			userAgent = "-"
+		}
+
+		status := lrw.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+
+		entry := pkgLog.Info(
+			"event.dataset", "http.access",
+			"client.ip", remoteAddr,
+			"http.request.method", r.Method,
+			"url.original", r.URL.String(),
+			"http.version", r.Proto,
+			"http.response.status_code", status,
+			"http.response.body.bytes", lrw.bytes,
+			"http.request.body.bytes", r.ContentLength,
+			"event.duration", duration.Nanoseconds(),
+			"user_agent.original", userAgent,
 		)
+
+		fmt.Println(entry.JSON())
 	})
 }
