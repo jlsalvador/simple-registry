@@ -22,12 +22,11 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/jlsalvador/simple-registry/pkg/http"
 )
 
 const AnonymousUsername = "anonymous"
-
-var ErrBadRequest = errors.New("bad request")
-var ErrUnauthorized = errors.New("unauthorized")
 
 var httpAuthBasicRegexp = regexp.MustCompile(`^Basic\s+([a-zA-Z0-9+/]+={0,2})$`)
 var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$`)
@@ -38,8 +37,12 @@ var httpAuthBearerRegexp = regexp.MustCompile(`^Bearer\s+([a-zA-Z0-9+/]+={0,2})$
 // authorization header and there is an anonymous user in RBAC users.
 func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) {
 	if r == nil {
-		return "", ErrBadRequest
+		return "", http.ErrBadRequest
 	}
+
+	isAnonymousUserEnabled := slices.IndexFunc(e.Users, func(u User) bool {
+		return u.Name == AnonymousUsername
+	}) >= 0
 
 	v := r.Header.Get("Authorization")
 
@@ -49,24 +52,30 @@ func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) 
 
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
-			return "", errors.Join(ErrBadRequest, err)
+			return "", errors.Join(http.ErrBadRequest, err)
 		}
 
 		parts := strings.SplitN(string(decoded), ":", 2)
 		if len(parts) != 2 {
-			return "", ErrBadRequest
+			return "", http.ErrBadRequest
 		}
 
 		username := parts[0]
 		password := parts[1]
 
+		// Empty username & password could be a valid anonymous user.
+		if username == "" && password == "" && isAnonymousUserEnabled {
+			return AnonymousUsername, nil
+		}
+
+		// Check if the user exists and password is valid.
 		if i := slices.IndexFunc(e.Users, func(user User) bool {
 			return user.Name == username && user.IsPasswordValid(password)
 		}); i >= 0 {
 			return e.Users[i].Name, nil
 		}
 
-		return "", ErrUnauthorized
+		return "", http.ErrUnauthorized
 	}
 
 	// Bearer token auth.
@@ -85,8 +94,13 @@ func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) 
 			}
 		}
 
-		return "", ErrUnauthorized
+		return "", http.ErrUnauthorized
 	}
 
-	return "", ErrUnauthorized
+	// No authentication header found, return anonymous user if there is one.
+	if isAnonymousUserEnabled {
+		return AnonymousUsername, nil
+	}
+
+	return "", http.ErrUnauthorized
 }

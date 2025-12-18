@@ -16,9 +16,9 @@ package handler
 
 import (
 	"encoding/json"
-	"net/http"
-	"slices"
+	netHttp "net/http"
 
+	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
@@ -37,17 +37,21 @@ func (m *ServeMux) Index(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
-	if i := slices.IndexFunc(m.cfg.Rbac.Users, func(u rbac.User) bool {
-		return u.Name == username
-	}); i < 0 {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+	// Check if user is allowed to access this registry.
+	if !m.cfg.Rbac.IsAllowed(username, "", "", netHttp.MethodGet) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	w.WriteHeader(netHttp.StatusOK)
@@ -69,16 +73,21 @@ func (m *ServeMux) CatalogList(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
 	// Check if user has permission to access the catalog.
-	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", http.MethodGet) {
-		w.WriteHeader(http.StatusForbidden)
-		return
+	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", netHttp.MethodGet) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Fetch repositories from storage.

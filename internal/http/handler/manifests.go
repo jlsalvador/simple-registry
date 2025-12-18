@@ -24,6 +24,8 @@ import (
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/http"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -58,9 +60,8 @@ func (m *ServeMux) ManifestsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -84,9 +85,15 @@ func (m *ServeMux) ManifestsGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodGet) {
-		w.WriteHeader(http.StatusForbidden)
-		return
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodGet) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Get the manifest blob from the data storage.
@@ -139,9 +146,8 @@ func (m *ServeMux) ManifestsPut(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -166,9 +172,15 @@ func (m *ServeMux) ManifestsPut(
 	}
 
 	// Check if the user can to push manifests to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodPut) {
-		w.WriteHeader(http.StatusForbidden)
-		return
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodPut) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Store manifest.
@@ -225,9 +237,8 @@ func (m *ServeMux) ManifestsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -250,9 +261,16 @@ func (m *ServeMux) ManifestsDelete(
 		return
 	}
 
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, http.MethodDelete) {
-		w.WriteHeader(http.StatusForbidden)
-		return
+	// Check if the user can delete manifests from the repository.
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodDelete) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	if err := m.cfg.Data.ManifestDelete(repo, reference); err != nil {

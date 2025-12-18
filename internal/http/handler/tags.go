@@ -23,6 +23,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/jlsalvador/simple-registry/pkg/http"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -49,9 +51,8 @@ func (m *ServeMux) TagsList(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -60,6 +61,18 @@ func (m *ServeMux) TagsList(
 	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
+	}
+
+	// Check if the user can list tags from this manifest.
+	if !m.cfg.Rbac.IsAllowed(username, "tags", repo, netHttp.MethodGet) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	tags, err := m.cfg.Data.TagsList(repo)
@@ -73,6 +86,12 @@ func (m *ServeMux) TagsList(
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
+
+	// Filter tags by user permissions.
+	tags = slices.DeleteFunc(tags, func(t string) bool {
+		resource := repo + ":" + t
+		return !m.cfg.Rbac.IsAllowed(username, "tags", resource, netHttp.MethodGet)
+	})
 
 	slices.Sort(tags)
 
@@ -111,16 +130,6 @@ func (m *ServeMux) TagsList(
 			return
 		}
 		tags = tags[:nInt]
-	}
-
-	// For each tag, check ACL
-	for _, t := range tags {
-		// ACL: user must have permission to list tags on this repository
-		resource := repo + ":" + t
-		if !m.cfg.Rbac.IsAllowed(username, "tags", resource, http.MethodGet) {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
 	}
 
 	response := map[string]any{

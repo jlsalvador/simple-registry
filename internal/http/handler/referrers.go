@@ -9,6 +9,8 @@ import (
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/http"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -17,9 +19,8 @@ func (m *ServeMux) ReferrersGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(http.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -38,9 +39,15 @@ func (m *ServeMux) ReferrersGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, http.MethodGet) {
-		w.WriteHeader(http.StatusForbidden)
-		return
+	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, netHttp.MethodGet) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst)

@@ -24,6 +24,7 @@ import (
 	"github.com/jlsalvador/simple-registry/internal/config"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/http"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 
 	u "github.com/google/uuid"
@@ -159,9 +160,8 @@ func (m *ServeMux) BlobsUploadsPost(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -174,8 +174,14 @@ func (m *ServeMux) BlobsUploadsPost(
 
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Case 1. Mount blob from other repository.
@@ -224,9 +230,8 @@ func (m *ServeMux) BlobsUploadsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -237,17 +242,23 @@ func (m *ServeMux) BlobsUploadsGet(
 		return
 	}
 
-	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
-	}
-
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
+	}
+
+	// Check if the user can push to the repository.
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
@@ -295,16 +306,9 @@ func (m *ServeMux) BlobsUploadsPatch(
 		return
 	}
 
-	var start int64 = -1
-
-	if rngStart, _, err := http.ParseRequestContentRange(r); err == nil {
-		start = rngStart
-	}
-
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -315,17 +319,23 @@ func (m *ServeMux) BlobsUploadsPatch(
 		return
 	}
 
-	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
-	}
-
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if u.Validate(uuid) != nil {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
+	}
+
+	// Check if the user can push to the repository.
+	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
@@ -337,6 +347,11 @@ func (m *ServeMux) BlobsUploadsPatch(
 
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
+	}
+
+	var start int64 = -1
+	if rngStart, _, err := http.ParseRequestContentRange(r); err == nil {
+		start = rngStart
 	}
 
 	// Check if the range is valid.
@@ -397,9 +412,8 @@ func (m *ServeMux) BlobsUploadsPut(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -426,8 +440,14 @@ func (m *ServeMux) BlobsUploadsPut(
 
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPut) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	if r.Header.Get("Content-Type") == "application/octet-stream" && r.Header.Get("Content-Length") != "" {
@@ -494,9 +514,8 @@ func (m *ServeMux) BlobsUploadsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -516,8 +535,14 @@ func (m *ServeMux) BlobsUploadsDelete(
 
 	// Check if the user can delete blobs from the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	if err := m.cfg.Data.BlobsUploadCancel(repo, uuid); err != nil {

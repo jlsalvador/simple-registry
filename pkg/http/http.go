@@ -15,13 +15,11 @@
 package http
 
 import (
-	"errors"
 	netHttp "net/http"
 	"regexp"
 	"strconv"
 )
 
-var ErrInvalidRange = errors.New("invalid range")
 var regExpRange = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
 
 // Parse HTTP request header "Content-Range"
@@ -30,12 +28,12 @@ var regExpRange = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
 func ParseRequestContentRange(r *netHttp.Request) (start int64, end int64, err error) {
 	raw := r.Header.Get("Content-Range")
 	if raw == "" {
-		return -1, -1, ErrInvalidRange
+		return -1, -1, ErrRequestedRangeNotSatisfiable
 	}
 
 	match := regExpRange.FindStringSubmatch(raw)
 	if len(match) != 3 {
-		return -1, -1, ErrInvalidRange
+		return -1, -1, ErrRequestedRangeNotSatisfiable
 	}
 
 	start, _ = strconv.ParseInt(match[1], 10, 64) // ignore error because it's already validated by the regexp.

@@ -47,7 +47,7 @@ func TestParseRequestContentRange(t *testing.T) {
 			},
 			start: -1,
 			end:   -1,
-			err:   http.ErrInvalidRange,
+			err:   http.ErrRequestedRangeNotSatisfiable,
 		},
 		{
 			name: "invalid value",
@@ -56,7 +56,7 @@ func TestParseRequestContentRange(t *testing.T) {
 			},
 			start: -1,
 			end:   -1,
-			err:   http.ErrInvalidRange,
+			err:   http.ErrRequestedRangeNotSatisfiable,
 		},
 	}
 

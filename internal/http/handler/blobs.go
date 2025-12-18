@@ -23,6 +23,8 @@ import (
 	"regexp"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/http"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -48,9 +50,8 @@ func (m *ServeMux) BlobsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -70,8 +71,14 @@ func (m *ServeMux) BlobsGet(
 
 	// Check if the user have permission to pull the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodGet) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	blob, size, err := m.cfg.Data.BlobsGet(repo, digest)
@@ -115,9 +122,8 @@ func (m *ServeMux) BlobsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if err, ok := err.(*http.HttpError); ok {
+		w.WriteHeader(err.Status)
 		return
 	}
 
@@ -137,8 +143,14 @@ func (m *ServeMux) BlobsDelete(
 
 	// Check if the user have permission to delete blobs.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		if username == rbac.AnonymousUsername {
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
 	}
 
 	err = m.cfg.Data.BlobsDelete(repo, digest)
