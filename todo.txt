@@ -1,0 +1,15 @@
+(A) 2025-12-18 refactor +yaml directory parser into a separate package. @todo
+(A) 2025-12-18 externalize the +yaml parser package and register parser types by kind and apiVersion. @todo
+(A) 2025-12-18 add a startup flag to specify the directory containing +yaml manifests. @todo
+(B) 2025-12-18 merge existing +rbac parsing logic so that +rbac can be parsed independently. @todo
+(B) 2025-12-18 add support for a global configuration within the +yaml parsing system. @todo
+(C) 2025-12-18 remove the obsolete rbacDir flag and clean up unused code in the +rbac parsing package. @todo
+(C) 2025-12-18 review and eliminate any remaining dead code after the refactor. @todo
+(D) 2025-12-18 update documentation and README to reflect the new +yaml parser package structure. @todo
+(B) 2025-12-17 pull through +cache as a mirror. @todo
+2025-12-17 +gc on demand. @whish
+2025-12-17 +gc on timer. @whish
+2025-12-17 external optional auth. +rbac @whish
+2025-12-17 web ui for admin. +admin @whish
+2025-12-17 reload +yaml on demand. @whish
+2025-12-17 auto reload +yaml. @whish
