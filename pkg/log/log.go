@@ -13,42 +13,83 @@
 // limitations under the License.
 
 // Package log provides a key-value logger and JSON formatter.
+//
+// Note: DefaultStdout, DefaultStderr and DefaultPrettyPrint should be
+// configured during initialization and not modified concurrently.
+//
+// Example:
+//
+//	log.Info(
+//	    "msg", "server started",
+//	    "port", 8080,
+//	).Print()
 package log
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"os"
 	"time"
 )
 
-const LEVEL_DEBUG = "DEBUG"
-const LEVEL_INFO = "INFO"
-const LEVEL_WARN = "WARN"
-const LEVEL_ERROR = "ERROR"
+const (
+	LevelDebug = "DEBUG" // Output msg to [os.Stdout].
+	LevelInfo  = "INFO"  // Output msg to [os.Stdout].
+	LevelWarn  = "WARN"  // Output msg to [os.Stderr].
+	LevelError = "ERROR" // Output msg to [os.Stderr].
+)
+
+const (
+	FieldTimestamp = "@timestamp"
+	FieldLevel     = "log.level"
+)
+
+var (
+	DefaultStderr      io.Writer = os.Stderr // Sets output for LevelWarn and LevelError.
+	DefaultStdout      io.Writer = os.Stdout // Sets output for LevelDebug and LevelInfo.
+	DefaultPrettyPrint           = false     // Indent output as multiline JSON.
+)
 
 // Entry represents a log entry.
 //
-// Please, use [Debug], [Info], [Warn], and [Error] functions.
+// Please, use Debug(), Info(), Warn(), and Error().
 type Entry struct {
-	fields map[string]any
+	stderr      io.Writer
+	stdout      io.Writer
+	prettyPrint bool
+	fields      map[string]any
 }
 
-// JSON returns the logger as a JSON string.
-func (l *Entry) JSON() string {
-	b, _ := json.Marshal(l.fields)
+func (e *Entry) jsonMarshal(pretty bool) string {
+	var b []byte
+	var err error
+
+	if pretty {
+		b, err = json.MarshalIndent(e.fields, "", "  ")
+	} else {
+		b, err = json.Marshal(e.fields)
+	}
+
+	if err != nil {
+		return Error("err", err).JSON()
+	}
+
 	return string(b)
 }
 
-func (l *Entry) JSONIndent() string {
-	b, _ := json.MarshalIndent(l.fields, "", "  ")
-	return string(b)
-}
+func (e *Entry) JSON() string       { return e.jsonMarshal(false) }
+func (e *Entry) JSONIndent() string { return e.jsonMarshal(true) }
 
 // With adds key-value pairs to the logger.
-func (l *Entry) With(kv ...any) *Entry {
-	if l.fields == nil {
-		l.fields = map[string]any{
-			"@timestamp": time.Now().Format(time.RFC3339),
-			"log.level":  LEVEL_INFO,
+func (e *Entry) With(kv ...any) *Entry {
+	if e.fields == nil {
+		e.stderr = DefaultStderr
+		e.stdout = DefaultStdout
+		e.prettyPrint = DefaultPrettyPrint
+		e.fields = map[string]any{
+			FieldTimestamp: time.Now().Format(time.RFC3339),
+			FieldLevel:     LevelInfo,
 		}
 	}
 
@@ -57,13 +98,27 @@ func (l *Entry) With(kv ...any) *Entry {
 		if !ok {
 			continue
 		}
-		l.fields[key] = kv[i+1]
+		e.fields[key] = kv[i+1]
 	}
 
-	return l
+	return e
 }
 
-func Debug(kv ...any) *Entry { return (&Entry{}).With("log.level", LEVEL_DEBUG).With(kv...) }
-func Info(kv ...any) *Entry  { return (&Entry{}).With("log.level", LEVEL_INFO).With(kv...) }
-func Warn(kv ...any) *Entry  { return (&Entry{}).With("log.level", LEVEL_WARN).With(kv...) }
-func Error(kv ...any) *Entry { return (&Entry{}).With("log.level", LEVEL_ERROR).With(kv...) }
+// Print outputs the logger to stdout or stderr based on the log level.
+func (e *Entry) Print() {
+	if e.fields == nil {
+		e.With()
+	}
+
+	out := e.stdout
+	if l := e.fields["log.level"]; l == LevelWarn || l == LevelError {
+		out = e.stderr
+	}
+
+	fmt.Fprintf(out, "%s\n", e.jsonMarshal(e.prettyPrint))
+}
+
+func Debug(kv ...any) *Entry { return (&Entry{}).With("log.level", LevelDebug).With(kv...) }
+func Info(kv ...any) *Entry  { return (&Entry{}).With("log.level", LevelInfo).With(kv...) }
+func Warn(kv ...any) *Entry  { return (&Entry{}).With("log.level", LevelWarn).With(kv...) }
+func Error(kv ...any) *Entry { return (&Entry{}).With("log.level", LevelError).With(kv...) }

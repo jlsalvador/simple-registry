@@ -15,7 +15,6 @@
 package log
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -46,7 +45,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			status = http.StatusOK
 		}
 
-		entry := pkgLog.Info(
+		pkgLog.Info(
 			"event.dataset", "http.access",
 			"client.ip", remoteAddr,
 			"http.request.method", r.Method,
@@ -57,8 +56,6 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"http.request.body.bytes", r.ContentLength,
 			"event.duration", duration.Nanoseconds(),
 			"user_agent.original", userAgent,
-		)
-
-		fmt.Println(entry.JSON())
+		).Print()
 	})
 }
