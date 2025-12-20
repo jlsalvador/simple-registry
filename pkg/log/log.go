@@ -34,10 +34,10 @@ import (
 )
 
 const (
-	LevelDebug = "DEBUG" // Output msg to [os.Stdout].
-	LevelInfo  = "INFO"  // Output msg to [os.Stdout].
-	LevelWarn  = "WARN"  // Output msg to [os.Stderr].
-	LevelError = "ERROR" // Output msg to [os.Stderr].
+	LevelDebug = "debug" // Output msg to [os.Stdout].
+	LevelInfo  = "info"  // Output msg to [os.Stdout].
+	LevelWarn  = "warn"  // Output msg to [os.Stderr].
+	LevelError = "error" // Output msg to [os.Stderr].
 )
 
 const (
@@ -51,24 +51,29 @@ var (
 	DefaultPrettyPrint           = false     // Indent output as multiline JSON.
 )
 
+// For testing mockups.
+var (
+	isTerminalFn = IsTerminal
+)
+
 // Entry represents a log entry.
 //
 // Please, use Debug(), Info(), Warn(), and Error().
 type Entry struct {
-	stderr      io.Writer
-	stdout      io.Writer
-	prettyPrint bool
+	Stderr      io.Writer
+	Stdout      io.Writer
+	PrettyPrint bool
 	fields      map[string]any
 }
 
-func (e *Entry) jsonMarshal(pretty bool) string {
+func jsonMarshal(kv map[string]any, pretty bool) string {
 	var b []byte
 	var err error
 
 	if pretty {
-		b, err = json.MarshalIndent(e.fields, "", "  ")
+		b, err = json.MarshalIndent(kv, "", "  ")
 	} else {
-		b, err = json.Marshal(e.fields)
+		b, err = json.Marshal(kv)
 	}
 
 	if err != nil {
@@ -78,15 +83,15 @@ func (e *Entry) jsonMarshal(pretty bool) string {
 	return string(b)
 }
 
-func (e *Entry) JSON() string       { return e.jsonMarshal(false) }
-func (e *Entry) JSONIndent() string { return e.jsonMarshal(true) }
+func (e *Entry) JSON() string       { return jsonMarshal(e.fields, false) }
+func (e *Entry) JSONIndent() string { return jsonMarshal(e.fields, true) }
 
 // With adds key-value pairs to the logger.
 func (e *Entry) With(kv ...any) *Entry {
 	if e.fields == nil {
-		e.stderr = DefaultStderr
-		e.stdout = DefaultStdout
-		e.prettyPrint = DefaultPrettyPrint
+		e.Stderr = DefaultStderr
+		e.Stdout = DefaultStdout
+		e.PrettyPrint = DefaultPrettyPrint
 		e.fields = map[string]any{
 			FieldTimestamp: time.Now().Format(time.RFC3339),
 			FieldLevel:     LevelInfo,
@@ -110,15 +115,28 @@ func (e *Entry) Print() {
 		e.With()
 	}
 
-	out := e.stdout
-	if l := e.fields["log.level"]; l == LevelWarn || l == LevelError {
-		out = e.stderr
+	out := e.Stdout
+
+	level, ok := e.fields[FieldLevel].(string)
+	if !ok {
+		Error("err", "log level must be a string").Print()
+		return
 	}
 
-	fmt.Fprintf(out, "%s\n", e.jsonMarshal(e.prettyPrint))
+	if level == LevelWarn || level == LevelError {
+		out = e.Stderr
+	}
+
+	jsonStr := jsonMarshal(e.fields, e.PrettyPrint)
+
+	if _, noColor := os.LookupEnv("NO_COLOR"); !noColor && isTerminalFn(out) {
+		jsonStr = enhanceJSONForTerminal(jsonStr, level)
+	}
+
+	fmt.Fprintf(out, "%s\n", jsonStr)
 }
 
-func Debug(kv ...any) *Entry { return (&Entry{}).With("log.level", LevelDebug).With(kv...) }
-func Info(kv ...any) *Entry  { return (&Entry{}).With("log.level", LevelInfo).With(kv...) }
-func Warn(kv ...any) *Entry  { return (&Entry{}).With("log.level", LevelWarn).With(kv...) }
-func Error(kv ...any) *Entry { return (&Entry{}).With("log.level", LevelError).With(kv...) }
+func Debug(kv ...any) *Entry { return (&Entry{}).With(FieldLevel, LevelDebug).With(kv...) }
+func Info(kv ...any) *Entry  { return (&Entry{}).With(FieldLevel, LevelInfo).With(kv...) }
+func Warn(kv ...any) *Entry  { return (&Entry{}).With(FieldLevel, LevelWarn).With(kv...) }
+func Error(kv ...any) *Entry { return (&Entry{}).With(FieldLevel, LevelError).With(kv...) }

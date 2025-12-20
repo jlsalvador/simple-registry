@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package log_test
+package log
 
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
-
-	"github.com/jlsalvador/simple-registry/pkg/log"
 )
 
 // helper: parse JSON output
@@ -36,28 +35,28 @@ func parseJSON(t *testing.T, s string) map[string]any {
 
 func TestInfoPrintStdout(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
-	log.DefaultPrettyPrint = false
+	DefaultStdout = &buf
+	DefaultStderr = &buf
+	DefaultPrettyPrint = false
 
-	log.Info("msg", "hello").Print()
+	Info("msg", "hello").Print()
 
 	m := parseJSON(t, buf.String())
 
 	if m["msg"] != "hello" {
 		t.Fatalf("expected msg=hello, got %v", m["msg"])
 	}
-	if m[log.FieldLevel] != log.LevelInfo {
-		t.Fatalf("expected level INFO, got %v", m[log.FieldLevel])
+	if m[FieldLevel] != LevelInfo {
+		t.Fatalf("expected level INFO, got %v", m[FieldLevel])
 	}
 }
 
 func TestWarnPrintStderr(t *testing.T) {
 	var out, err bytes.Buffer
-	log.DefaultStdout = &out
-	log.DefaultStderr = &err
+	DefaultStdout = &out
+	DefaultStderr = &err
 
-	log.Warn("warn", true).Print()
+	Warn("warn", true).Print()
 
 	if out.Len() != 0 {
 		t.Fatalf("stdout should be empty")
@@ -74,11 +73,11 @@ func TestWarnPrintStderr(t *testing.T) {
 
 func TestPrettyPrint(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
-	log.DefaultPrettyPrint = true
+	DefaultStdout = &buf
+	DefaultStderr = &buf
+	DefaultPrettyPrint = true
 
-	log.Info("a", 1).Print()
+	Info("a", 1).Print()
 
 	if !strings.Contains(buf.String(), "\n") {
 		t.Fatalf("expected pretty printed json")
@@ -86,7 +85,7 @@ func TestPrettyPrint(t *testing.T) {
 }
 
 func TestJSONAndJSONIndent(t *testing.T) {
-	e := log.Info("x", 1)
+	e := Info("x", 1)
 
 	j1 := e.JSON()
 	j2 := e.JSONIndent()
@@ -101,10 +100,10 @@ func TestJSONAndJSONIndent(t *testing.T) {
 
 func TestWithIgnoresNonStringKey(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
+	DefaultStdout = &buf
+	DefaultStderr = &buf
 
-	log.Info(123, "ignored", "ok", true).Print()
+	Info(123, "ignored", "ok", true).Print()
 
 	m := parseJSON(t, buf.String())
 	if _, exists := m["ignored"]; exists {
@@ -117,28 +116,28 @@ func TestWithIgnoresNonStringKey(t *testing.T) {
 
 func TestPrintWithoutWith(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
+	DefaultStdout = &buf
+	DefaultStderr = &buf
 
-	var e log.Entry
+	var e Entry
 	e.Print()
 
 	m := parseJSON(t, buf.String())
-	if m[log.FieldLevel] != log.LevelInfo {
+	if m[FieldLevel] != LevelInfo {
 		t.Fatalf("expected default level INFO")
 	}
 }
 
 func TestJSONMarshalErrorPath(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
+	DefaultStdout = &buf
+	DefaultStderr = &buf
 
 	ch := make(chan int) // not JSON-marshalable
-	log.Info("bad", ch).Print()
+	Info("bad", ch).Print()
 
 	m := parseJSON(t, buf.String())
-	if m[log.FieldLevel] != log.LevelError {
+	if m[FieldLevel] != LevelError {
 		t.Fatalf("expected LevelError on marshal failure")
 	}
 	if _, ok := m["err"]; !ok {
@@ -148,15 +147,42 @@ func TestJSONMarshalErrorPath(t *testing.T) {
 
 func TestAllLevels(t *testing.T) {
 	var buf bytes.Buffer
-	log.DefaultStdout = &buf
-	log.DefaultStderr = &buf
+	DefaultStdout = &buf
+	DefaultStderr = &buf
 
-	log.Debug().Print()
-	log.Info().Print()
-	log.Warn().Print()
-	log.Error().Print()
+	Debug().Print()
+	Info().Print()
+	Warn().Print()
+	Error().Print()
 
 	if buf.Len() == 0 {
 		t.Fatalf("expected output")
+	}
+}
+
+func TestInvalidLogLevelType(t *testing.T) {
+	var buf bytes.Buffer
+	DefaultStdout = &buf
+	DefaultStderr = &buf
+
+	Info(FieldLevel, 123).Print()
+	if !strings.Contains(buf.String(), "log level must be a string") {
+		t.Fatalf("expected err: log level must be a string")
+	}
+}
+
+func TestMockTerminal(t *testing.T) {
+	// Mock IsTerminal function to always return true.
+	orgIsTerminalFn := isTerminalFn
+	isTerminalFn = func(_ io.Writer) bool { return true }
+	defer func() { isTerminalFn = orgIsTerminalFn }()
+
+	var buf bytes.Buffer
+	DefaultStdout = &buf
+	DefaultStderr = &buf
+
+	Info("msg", "testing bold").Print()
+	if !strings.Contains(buf.String(), "\033[1m") {
+		t.Fatalf("expected ANSI escape code for bold")
 	}
 }
