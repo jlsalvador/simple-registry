@@ -37,7 +37,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "valid user",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("admin:admin"))},
+					"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte("admin:admin"))},
 				},
 			},
 			want:    "admin",
@@ -47,7 +47,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "valid basic auth with blank password",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("blank_password:"))},
+					"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte("blank_password:"))},
 				},
 			},
 			want:    "",
@@ -57,7 +57,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "invalid user",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("user:password"))},
+					"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte("user:password"))},
 				},
 			},
 			want:    "",
@@ -67,7 +67,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "valid token",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Bearer 123"},
+					"Authorization": {"Bearer 123"},
 				},
 			},
 			want:    "admin",
@@ -77,7 +77,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "expired token",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Bearer 456"},
+					"Authorization": {"Bearer 456"},
 				},
 			},
 			want:    "",
@@ -87,7 +87,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "unreferenced token",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Bearer 789"},
+					"Authorization": {"Bearer 789"},
 				},
 			},
 			want:    "",
@@ -103,7 +103,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "unsupported auth scheme",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Digest 123"},
+					"Authorization": {"Digest 123"},
 				},
 			},
 			want: "",
@@ -112,7 +112,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "invalid basic auth value",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Basic 123"},
+					"Authorization": {"Basic 123"},
 				},
 			},
 			want:    "",
@@ -122,7 +122,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 			name: "invalid basic auth without password",
 			request: &netHttp.Request{
 				Header: netHttp.Header{
-					"Authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("admin"))},
+					"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte("admin"))},
 				},
 			},
 			want:    "",
@@ -157,13 +157,38 @@ func TestGetUsernameFromHttpRequest_Anonymous(t *testing.T) {
 			{rbac.AnonymousUsername, "hash", nil},
 		},
 	}
-	r := &netHttp.Request{}
-
-	username, err := e.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		t.Errorf("e.GetUsernameFromHttpRequest() error = %v", err)
+	tcs := []struct {
+		name    string
+		request *netHttp.Request
+		want    string
+	}{
+		{
+			name:    "without auth header",
+			request: &netHttp.Request{},
+			want:    rbac.AnonymousUsername,
+		},
+		{
+			name: "with empty auth header",
+			request: &netHttp.Request{
+				Header: map[string][]string{
+					"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(":"))},
+				},
+			},
+			want: rbac.AnonymousUsername,
+		},
 	}
-	if username != rbac.AnonymousUsername {
-		t.Errorf("e.GetUsernameFromHttpRequest() username: %v, want: %v", username, rbac.AnonymousUsername)
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			username, err := e.GetUsernameFromHttpRequest(tc.request)
+			if err != nil {
+				t.Errorf("e.GetUsernameFromHttpRequest() error = %v", err)
+			}
+			if username != rbac.AnonymousUsername {
+				t.Errorf("e.GetUsernameFromHttpRequest() username: %v, want: %v", username, rbac.AnonymousUsername)
+			}
+		})
 	}
 }
