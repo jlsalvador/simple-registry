@@ -31,7 +31,7 @@ func main() {
 
 	genHash := flag.Bool("genhash", false, "Generate a hash for the given password and exit")
 
-	rbacDir := flag.String("rbacdir", "", "Directory with YAML files for RBAC")
+	cfgDir := flag.String("cfgdir", "", "Directory with YAML configuration files")
 
 	adminName := flag.String("adminname", "", "Administrator name")
 	adminPwd := flag.String("adminpwd", "", "Administrator password")
@@ -54,7 +54,7 @@ func main() {
 	case *genHash:
 		err = cmd.GenerateHash()
 
-	case (*adminName != "" && *adminPwd != "") || *rbacDir != "":
+	case (*adminName != "" && *adminPwd != "") || *cfgDir != "":
 		err = cmd.Serve(
 			*addr,
 			*dataDir,
@@ -63,7 +63,7 @@ func main() {
 			*adminPwdFile,
 			*certFile,
 			*keyFile,
-			*rbacDir,
+			*cfgDir,
 		)
 
 	default:

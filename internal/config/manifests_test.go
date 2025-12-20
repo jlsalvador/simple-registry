@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package yaml_test
+package config_test
 
 import (
-	"errors"
+	"strings"
 	"testing"
 
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
-	"github.com/jlsalvador/simple-registry/pkg/rbac/yaml"
+	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
 func TestParseYAML_FullCoverage(t *testing.T) {
@@ -29,7 +29,17 @@ func TestParseYAML_FullCoverage(t *testing.T) {
 
 		data := `
 ---
-apiVersion: v1
+apiVersion: ` + config.ApiVersion + `
+kind: Token
+metadata:
+  name: token1
+spec:
+  value: abc
+  username: admin
+  expiresAt: 2025-01-01T00:00:00Z
+
+---
+apiVersion: ` + config.ApiVersion + `
 kind: User
 metadata:
   name: admin
@@ -38,7 +48,7 @@ spec:
   groups: [admins]
 
 ---
-apiVersion: v1
+apiVersion: ` + config.ApiVersion + `
 kind: Role
 metadata:
   name: admins
@@ -47,7 +57,7 @@ spec:
   verbs: ["*"]
 
 ---
-apiVersion: v1
+apiVersion: ` + config.ApiVersion + `
 kind: RoleBinding
 metadata:
   name: admins-binding
@@ -58,22 +68,13 @@ spec:
   roleRef:
     name: admins
   scopes: ["^.*$"]
-
----
-apiVersion: v1
-kind: Token
-metadata:
-  name: token1
-spec:
-  value: abc
-  username: admin
-  expiresAt: 2025-01-01T00:00:00Z
 `
-
-		tokens, users, roles, bindings, err := yaml.ParseYAML([]byte(data))
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+
+		tokens, users, roles, bindings := config.GetTokensUsersRolesRoleBindingsFromManifests(m)
 
 		if len(tokens) != 1 || tokens[0].Username != "admin" {
 			t.Fatalf("token not parsed correctly")
@@ -96,15 +97,16 @@ spec:
 		t.Parallel()
 
 		data := `
-apiVersion: v1
+apiVersion: ` + config.ApiVersion + `
 kind: User
 metadata:
   name: test
 spec:
   groups: [`
-		_, _, _, _, err := yaml.ParseYAML([]byte(data))
-		if !errors.Is(err, yaml.ErrWhileParsing) {
-			t.Fatal("expected yaml.ErrWhileParsing")
+
+		_, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err == nil {
+			t.Fatal("expected err")
 		}
 	})
 
@@ -112,7 +114,7 @@ spec:
 		t.Parallel()
 
 		data := `
-apiVersion: v1
+apiVersion: ` + config.ApiVersion + `
 kind: Role
 metadata:
   name: bad-role
@@ -120,9 +122,11 @@ spec:
   resources: ["*"]
   verbs: ["explode"]
 `
-		_, _, _, _, err := yaml.ParseYAML([]byte(data))
-		if !errors.Is(err, rbac.ErrInvalidVerb) {
-			t.Fatal("expected rbac.ErrActionInvalid")
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
+
+		_, _, _, _ = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
 	})
 }

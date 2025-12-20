@@ -1,10 +1,12 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
 
-var Version = "0.0.1765883021"
+	"github.com/jlsalvador/simple-registry/internal/version"
+)
 
 func ShowVersion() error {
-	fmt.Printf("simple-registry v%s\n", Version)
+	fmt.Printf("%s v%s\n", version.AppName, version.AppVersion)
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jlsalvador/simple-registry/internal/version"
 	pkgLog "github.com/jlsalvador/simple-registry/pkg/log"
 )
 
@@ -46,6 +47,8 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		}
 
 		pkgLog.Info(
+			"service.name", version.AppName,
+			"service.version", version.AppVersion,
 			"event.dataset", "http.access",
 			"client.ip", remoteAddr,
 			"http.request.method", r.Method,

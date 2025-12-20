@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
-	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
 	"github.com/jlsalvador/simple-registry/internal/http/handler"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
+	"github.com/jlsalvador/simple-registry/internal/version"
+	"github.com/jlsalvador/simple-registry/pkg/log"
 )
 
 func Serve(
@@ -18,34 +18,47 @@ func Serve(
 	adminPwdFile,
 	certFile,
 	keyFile,
-	rbacDir string,
+	cfgDir string,
 ) error {
-	var rbacEngine *rbac.Engine
+	var cfg *config.Config
 	var err error
-	if rbacDir != "" {
-		rbacEngine, err = config.LoadRBACFromYamlDir(rbacDir)
+
+	if cfgDir != "" {
+		cfg, err = config.NewFromYamlDir(
+			cfgDir,
+			dataDir,
+		)
 	} else {
-		rbacEngine, err = config.GetRBACEngineStatic(adminName, adminPwd, adminPwdFile)
+		cfg, err = config.New(
+			adminName,
+			adminPwd,
+			adminPwdFile,
+			dataDir,
+		)
 	}
 	if err != nil {
 		return err
 	}
-
-	config := config.Config{
-		Rbac: *rbacEngine,
-		Data: filesystem.NewFilesystemDataStorage(dataDir),
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
 	}
 
-	h := handler.NewHandler(config)
+	h := handler.NewHandler(*cfg)
 
 	isTLS := certFile != "" && keyFile != ""
+	scheme := "HTTP"
+	if isTLS {
+		scheme = "HTTPS"
+	}
 
-	fmt.Printf("Listening on %s (%s)\n", addr, func() string {
-		if isTLS {
-			return "HTTPS"
-		}
-		return "HTTP"
-	}())
+	log.Info(
+		"service.name", version.AppName,
+		"service.version", version.AppVersion,
+		"event.dataset", "cmd.serve",
+		"addr", addr,
+		"scheme", scheme,
+		"msg", "listening for requests",
+	).Print()
 
 	if isTLS {
 		return http.ListenAndServeTLS(addr, certFile, keyFile, h)

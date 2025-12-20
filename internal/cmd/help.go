@@ -1,13 +1,17 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jlsalvador/simple-registry/internal/version"
+)
 
 func Help(short bool) error {
 	if !short {
 		fmt.Printf(`simple-registry v%s
 A lightweight OCI-compatible container registry with RBAC support.
 Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
-`, Version)
+`, version.AppVersion)
 	}
 
 	fmt.Print(`
