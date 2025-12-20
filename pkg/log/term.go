@@ -68,7 +68,7 @@ const (
 	ansiGrey   = "\033[90m"
 )
 
-var RegexKeys = regexp.MustCompile(`(\"[^\"]+\")(\s*:)`)
+var RegexKeys = regexp.MustCompile(`(\"[^\"]+\"\s*:)`)
 var RegexBold = regexp.MustCompile(`(\"(?:m|msg|message|d|dbg|debug|i|inf|info|information|informational|e|err|error|w|warn|warning|http\.request\.method|url\.original|http\.response\.status_code)\"\s*:\s*)(\"(?:\\.|[^"\\])*\"|\d+)`)
 
 // enhanceJSONForTerminal applies ANSI escape codes to make the log output
@@ -92,7 +92,7 @@ func enhanceJSONForTerminal(jsonStr string, level string) string {
 	enhanced = RegexBold.ReplaceAllString(enhanced, "$1"+ansiBold+"$2"+ansiNormal)
 
 	// Faint keys.
-	enhanced = RegexKeys.ReplaceAllString(enhanced, ansiFaint+"$1"+ansiNormal+"$2")
+	enhanced = RegexKeys.ReplaceAllString(enhanced, ansiFaint+"$1"+ansiNormal)
 
 	// Full line color by levels.
 	if fullLineColorCode != "" {
