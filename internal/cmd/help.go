@@ -8,21 +8,21 @@ import (
 
 func Help(short bool) error {
 	if !short {
-		fmt.Printf(`simple-registry v%s
+		fmt.Printf(`%s v%s
 A lightweight OCI-compatible container registry with RBAC support.
 Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
-`, version.AppVersion)
+`, version.AppName, version.AppVersion)
 	}
 
-	fmt.Print(`
+	fmt.Printf(`
 Usage:
-  simple-registry -genhash
+  %s -genhash
     Generate a password hash and exit.
 
-  simple-registry [options]
+  %s [options]
     Start the registry server.
 
-  simple-registry -version
+  %s -version
     Print the version and exit.
 
 Options:
@@ -50,17 +50,17 @@ Options:
   -key string
     TLS key.
 
-`)
+`, version.AppName, version.AppName, version.AppName)
 
 	if !short {
-		fmt.Print(`Example:
-  simple-registry \
+		fmt.Printf(`Example:
+  %s \
     -adminname admin \
     -adminpwd secret \
     -datadir /var/lib/registry \
     -cert cert.pem \
     -key key.pem
-`)
+`, version.AppName)
 	}
 
 	return nil
