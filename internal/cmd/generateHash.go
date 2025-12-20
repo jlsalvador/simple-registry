@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jlsalvador/simple-registry/pkg/log"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/term"
 )
 
 func isPiped() bool {
-	return !term.IsTerminal(int(os.Stdin.Fd()))
+	return !log.IsTerminal(os.Stdin)
 }
 
 func GenerateHash() error {
