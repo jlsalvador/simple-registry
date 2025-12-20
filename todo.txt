@@ -1,5 +1,5 @@
 (A) 2025-12-18 refactor +yaml directory parser into a separate package. @todo
-(A) 2025-12-18 externalize the +yaml parser package and register parser types by kind and apiVersion. @todo
+x (A) 2025-12-20 2025-12-18 externalize the +yaml parser package and register parser types by kind and apiVersion. @todo
 (A) 2025-12-18 add a startup flag to specify the directory containing +yaml manifests. @todo
 (B) 2025-12-18 merge existing +rbac parsing logic so that +rbac can be parsed independently. @todo
 (B) 2025-12-18 add support for a global configuration within the +yaml parsing system. @todo
