@@ -87,7 +87,7 @@ func (m *ServeMux) ManifestsGet(
 	// Check if the user is allowed to pull this manifest.
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -174,7 +174,7 @@ func (m *ServeMux) ManifestsPut(
 	// Check if the user can to push manifests to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodPut) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -264,7 +264,7 @@ func (m *ServeMux) ManifestsDelete(
 	// Check if the user can delete manifests from the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {

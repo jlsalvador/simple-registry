@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	Rbac rbac.Engine
-	Data data.DataStorage
+	WWWAuthenticate string
+	Rbac            rbac.Engine
+	Data            data.DataStorage
 }
 
 func New(adminName, adminPwd, adminPwdFile, dataDir string) (*Config, error) {
@@ -97,7 +98,8 @@ func New(adminName, adminPwd, adminPwdFile, dataDir string) (*Config, error) {
 	}
 
 	return &Config{
-		Rbac: rbacEngine,
-		Data: filesystem.NewFilesystemDataStorage(dataDir),
+		WWWAuthenticate: `Basic realm="simple-registry"`,
+		Rbac:            rbacEngine,
+		Data:            filesystem.NewFilesystemDataStorage(dataDir),
 	}, nil
 }

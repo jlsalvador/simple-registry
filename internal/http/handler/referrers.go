@@ -41,7 +41,7 @@ func (m *ServeMux) ReferrersGet(
 	// Check if the user is allowed to pull this manifest.
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {

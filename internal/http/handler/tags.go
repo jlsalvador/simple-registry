@@ -66,7 +66,7 @@ func (m *ServeMux) TagsList(
 	// Check if the user can list tags from this manifest.
 	if !m.cfg.Rbac.IsAllowed(username, "tags", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {

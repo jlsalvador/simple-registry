@@ -76,7 +76,8 @@ func NewFromYamlDir(
 	}
 
 	return &Config{
-		Rbac: rbacEngine,
-		Data: filesystem.NewFilesystemDataStorage(dataDir),
+		WWWAuthenticate: `Basic realm="simple-registry"`,
+		Rbac:            rbacEngine,
+		Data:            filesystem.NewFilesystemDataStorage(dataDir),
 	}, nil
 }

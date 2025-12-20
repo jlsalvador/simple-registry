@@ -72,7 +72,7 @@ func (m *ServeMux) BlobsGet(
 	// Check if the user have permission to pull the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -144,7 +144,7 @@ func (m *ServeMux) BlobsDelete(
 	// Check if the user have permission to delete blobs.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {

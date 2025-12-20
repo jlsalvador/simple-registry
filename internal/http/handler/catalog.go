@@ -45,7 +45,7 @@ func (m *ServeMux) Index(
 	// Check if user is allowed to access this registry.
 	if !m.cfg.Rbac.IsAllowed(username, "", "", netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -81,7 +81,7 @@ func (m *ServeMux) CatalogList(
 	// Check if user has permission to access the catalog.
 	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {

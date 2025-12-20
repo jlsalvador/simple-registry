@@ -175,7 +175,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -252,7 +252,7 @@ func (m *ServeMux) BlobsUploadsGet(
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -329,7 +329,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -441,7 +441,7 @@ func (m *ServeMux) BlobsUploadsPut(
 	// Check if the user can push to the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPut) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
@@ -536,7 +536,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 	// Check if the user can delete blobs from the repository.
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", "Basic realm=\"simple-registry\"")
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		} else {
