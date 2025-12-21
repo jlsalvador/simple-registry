@@ -1,4 +1,4 @@
-package cmd
+package serve
 
 import (
 	"fmt"
@@ -10,30 +10,27 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/log"
 )
 
-func Serve(
-	addr,
-	dataDir,
-	adminName,
-	adminPwd,
-	adminPwdFile,
-	certFile,
-	keyFile,
-	cfgDir string,
-) error {
-	var cfg *config.Config
-	var err error
+const CmdName = "serve"
+const CmdHelp = "Start the registry server"
 
-	if cfgDir != "" {
+func CmdFn() error {
+	flags, err := parseFlags()
+	if err != nil {
+		return err
+	}
+
+	var cfg *config.Config
+	if flags.CfgDir != "" {
 		cfg, err = config.NewFromYamlDir(
-			cfgDir,
-			dataDir,
+			flags.CfgDir,
+			flags.DataDir,
 		)
 	} else {
 		cfg, err = config.New(
-			adminName,
-			adminPwd,
-			adminPwdFile,
-			dataDir,
+			flags.AdminName,
+			flags.AdminPwd,
+			flags.AdminPwdFile,
+			flags.DataDir,
 		)
 	}
 	if err != nil {
@@ -45,7 +42,7 @@ func Serve(
 
 	h := handler.NewHandler(*cfg)
 
-	isTLS := certFile != "" && keyFile != ""
+	isTLS := flags.CertFile != "" && flags.KeyFile != ""
 	scheme := "HTTP"
 	if isTLS {
 		scheme = "HTTPS"
@@ -55,13 +52,13 @@ func Serve(
 		"service.name", version.AppName,
 		"service.version", version.AppVersion,
 		"event.dataset", "cmd.serve",
-		"addr", addr,
+		"addr", flags.Addr,
 		"scheme", scheme,
 		"msg", "listening for requests",
 	).Print()
 
 	if isTLS {
-		return http.ListenAndServeTLS(addr, certFile, keyFile, h)
+		return http.ListenAndServeTLS(flags.Addr, flags.CertFile, flags.KeyFile, h)
 	}
-	return http.ListenAndServe(addr, h)
+	return http.ListenAndServe(flags.Addr, h)
 }

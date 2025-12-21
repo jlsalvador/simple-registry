@@ -16,58 +16,54 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
+	"slices"
 
-	"github.com/jlsalvador/simple-registry/internal/cmd"
+	cmdGenHash "github.com/jlsalvador/simple-registry/internal/cmd/generate_hash"
+	cmdServe "github.com/jlsalvador/simple-registry/internal/cmd/serve"
+	cmdVersion "github.com/jlsalvador/simple-registry/internal/cmd/version"
+	"github.com/jlsalvador/simple-registry/internal/version"
 )
 
+type Cmd struct {
+	Name string
+	Help string
+	Fn   func() error
+}
+
+var cmds = []Cmd{
+	{cmdGenHash.CmdName, cmdGenHash.CmdHelp, cmdGenHash.CmdFn},
+	{cmdServe.CmdName, cmdServe.CmdHelp, cmdServe.CmdFn},
+	{cmdVersion.CmdName, cmdVersion.CmdHelp, cmdVersion.CmdFn},
+}
+
+func help() {
+	fmt.Printf("Usage: %s [command]\n\nCommands:\n", version.AppName)
+	for _, cmd := range cmds {
+		fmt.Printf("  %s\n        %s\n", cmd.Name, cmd.Help)
+	}
+	fmt.Println()
+}
+
 func main() {
-	flag.Usage = func() {
-		_ = cmd.Help(true)
+	cmdMain := flag.NewFlagSet(version.AppName, flag.ExitOnError)
+	cmdMain.Usage = help
+	cmdMain.Parse(os.Args[1:])
+
+	if len(os.Args) < 2 {
+		help()
+		os.Exit(1)
 	}
 
-	showHelp := false
-	flag.BoolVar(&showHelp, "help", false, "")
-	flag.BoolVar(&showHelp, "h", false, "")
-
-	genHash := flag.Bool("genhash", false, "Generate a hash for the given password and exit")
-
-	cfgDir := flag.String("cfgdir", "", "Directory with YAML configuration files")
-
-	adminName := flag.String("adminname", "", "Administrator name")
-	adminPwd := flag.String("adminpwd", "", "Administrator password")
-	adminPwdFile := flag.String("adminpwd-file", "", "Fetch administrator password from file")
-
-	certFile := flag.String("cert", "", "TLS certificate")
-	keyFile := flag.String("key", "", "TLS key")
-	addr := flag.String("addr", "0.0.0.0:5000", "Listening address")
-	dataDir := flag.String("datadir", "./data", "Data directory")
-
-	showVersion := flag.Bool("version", false, "Print the version and exit.")
-
-	flag.Parse()
-
 	var err error
-	switch {
-	case *showVersion:
-		err = cmd.ShowVersion()
-
-	case *genHash:
-		err = cmd.GenerateHash()
-
-	case (*adminName != "" && *adminPwd != "") || *cfgDir != "":
-		err = cmd.Serve(
-			*addr,
-			*dataDir,
-			*adminName,
-			*adminPwd,
-			*adminPwdFile,
-			*certFile,
-			*keyFile,
-			*cfgDir,
-		)
-
-	default:
-		err = cmd.Help(false)
+	if i := slices.IndexFunc(cmds, func(cmd Cmd) bool {
+		return cmd.Name == os.Args[1]
+	}); i >= 0 {
+		err = cmds[i].Fn()
+	} else {
+		err = fmt.Errorf("unknown command: %s\n", os.Args[1])
+		help()
 	}
 
 	if err != nil {

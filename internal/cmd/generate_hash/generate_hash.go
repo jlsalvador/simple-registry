@@ -1,4 +1,4 @@
-package cmd
+package generatehash
 
 import (
 	"fmt"
@@ -9,11 +9,14 @@ import (
 	"golang.org/x/term"
 )
 
+const CmdName = "genhash"
+const CmdHelp = "Generate a hash for the given password and exit"
+
 func isPiped() bool {
 	return !log.IsTerminal(os.Stdin)
 }
 
-func GenerateHash() error {
+func CmdFn() error {
 	var pwd []byte
 	var err error
 	if isPiped() {
