@@ -8,7 +8,9 @@ x (D) 2025-12-21 2025-12-20 add support for multiples cfgdir flag for +cmd serve
 x (C) 2025-12-21 2025-12-18 review and eliminate any remaining dead code after the refactor. @todo
 x (D) 2025-12-21 2025-12-18 update documentation and README to reflect the new +yaml parser package structure. @todo
 x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
+(C) 2025-12-21 pull through +cache refresh from upstream. @todo
 (D) 2025-12-21 pull through +cache ttl support. @todo
+(B) 2025-12-21 pull through +cache pwd file support. @todo
 (C) 2025-12-20 add +manifest field "enabled". @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
 2025-12-17 +gc on demand. @whish
