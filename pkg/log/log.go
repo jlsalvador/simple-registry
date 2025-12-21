@@ -31,6 +31,8 @@ import (
 	"io"
 	"os"
 	"time"
+
+	"github.com/jlsalvador/simple-registry/pkg/cli/term"
 )
 
 const (
@@ -53,7 +55,7 @@ var (
 
 // For testing mockups.
 var (
-	isTerminalFn = IsTerminal
+	isTerminalFn = term.IsTerminal
 )
 
 // Entry represents a log entry.
