@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 )
 
 const AnonymousUsername = "anonymous"
@@ -36,12 +36,12 @@ func (e *Engine) getUsernameFromAuthBasic(matches []string, isAnonymousUserEnabl
 
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return "", errors.Join(http.ErrBadRequest, err)
+		return "", errors.Join(httpErrors.ErrBadRequest, err)
 	}
 
 	parts := strings.SplitN(string(decoded), ":", 2)
 	if len(parts) != 2 {
-		return "", http.ErrBadRequest
+		return "", httpErrors.ErrBadRequest
 	}
 
 	username := parts[0]
@@ -59,7 +59,7 @@ func (e *Engine) getUsernameFromAuthBasic(matches []string, isAnonymousUserEnabl
 		return e.Users[i].Name, nil
 	}
 
-	return "", http.ErrUnauthorized
+	return "", httpErrors.ErrUnauthorized
 }
 
 func (e *Engine) getUsernameFromAuthBearer(matches []string) (string, error) {
@@ -77,7 +77,7 @@ func (e *Engine) getUsernameFromAuthBearer(matches []string) (string, error) {
 		}
 	}
 
-	return "", http.ErrUnauthorized
+	return "", httpErrors.ErrUnauthorized
 }
 
 // GetUsernameFromHttpRequest extracts the username from an HTTP request.
@@ -86,7 +86,7 @@ func (e *Engine) getUsernameFromAuthBearer(matches []string) (string, error) {
 // authorization header and there is an anonymous user in RBAC users.
 func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) {
 	if r == nil {
-		return "", http.ErrBadRequest
+		return "", httpErrors.ErrBadRequest
 	}
 
 	isAnonymousUserEnabled := slices.IndexFunc(e.Users, func(u User) bool {
@@ -110,5 +110,5 @@ func (e *Engine) GetUsernameFromHttpRequest(r *netHttp.Request) (string, error) 
 		return AnonymousUsername, nil
 	}
 
-	return "", http.ErrUnauthorized
+	return "", httpErrors.ErrUnauthorized
 }

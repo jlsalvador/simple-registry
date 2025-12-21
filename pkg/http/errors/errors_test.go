@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package http_test
+package errors_test
 
 import (
 	"testing"
 
-	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 )
 
 func TestHttpError(t *testing.T) {
 	tcs := []struct {
-		err  http.HttpError
+		err  httpErrors.HttpError
 		want string
 	}{
-		{http.ErrBadRequest, "Bad Request"},
-		{http.ErrUnauthorized, "Unauthorized"},
-		{http.ErrRequestedRangeNotSatisfiable, "Requested Range Not Satisfiable"},
+		{httpErrors.ErrBadRequest, "Bad Request"},
+		{httpErrors.ErrUnauthorized, "Unauthorized"},
+		{httpErrors.ErrRequestedRangeNotSatisfiable, "Requested Range Not Satisfiable"},
 	}
 
 	for _, tc := range tcs {

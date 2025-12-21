@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 
 	"golang.org/x/crypto/bcrypt"
@@ -116,7 +116,7 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 				},
 			},
 			want:    "",
-			wantErr: http.ErrBadRequest,
+			wantErr: httpErrors.ErrBadRequest,
 		},
 		{
 			name: "invalid basic auth without password",
@@ -126,13 +126,13 @@ func TestGetUsernameFromHttpRequest(t *testing.T) {
 				},
 			},
 			want:    "",
-			wantErr: http.ErrBadRequest,
+			wantErr: httpErrors.ErrBadRequest,
 		},
 		{
 			name:    "invalid request",
 			request: nil,
 			want:    "",
-			wantErr: http.ErrBadRequest,
+			wantErr: httpErrors.ErrBadRequest,
 		},
 	}
 

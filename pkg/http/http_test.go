@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 )
 
 func TestParseRequestContentRange(t *testing.T) {
@@ -47,7 +48,7 @@ func TestParseRequestContentRange(t *testing.T) {
 			},
 			start: -1,
 			end:   -1,
-			err:   http.ErrRequestedRangeNotSatisfiable,
+			err:   httpErrors.ErrRequestedRangeNotSatisfiable,
 		},
 		{
 			name: "invalid value",
@@ -56,7 +57,7 @@ func TestParseRequestContentRange(t *testing.T) {
 			},
 			start: -1,
 			end:   -1,
-			err:   http.ErrRequestedRangeNotSatisfiable,
+			err:   httpErrors.ErrRequestedRangeNotSatisfiable,
 		},
 	}
 

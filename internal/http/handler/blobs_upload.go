@@ -24,6 +24,7 @@ import (
 	"github.com/jlsalvador/simple-registry/internal/config"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 
@@ -160,7 +161,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -230,7 +231,7 @@ func (m *ServeMux) BlobsUploadsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -307,7 +308,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	}
 
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -412,7 +413,7 @@ func (m *ServeMux) BlobsUploadsPut(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -514,7 +515,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}

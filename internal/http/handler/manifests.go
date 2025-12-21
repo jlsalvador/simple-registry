@@ -24,7 +24,7 @@ import (
 	"regexp"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
-	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -60,7 +60,7 @@ func (m *ServeMux) ManifestsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -147,7 +147,7 @@ func (m *ServeMux) ManifestsPut(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -238,8 +238,13 @@ func (m *ServeMux) ManifestsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
-		w.WriteHeader(err.Status)
+	if err != nil {
+		if err, ok := err.(*httpErrors.HttpError); ok {
+			w.WriteHeader(err.Status)
+			return
+		}
+
+		w.WriteHeader(httpErrors.ErrInternalServerError.Status)
 		return
 	}
 

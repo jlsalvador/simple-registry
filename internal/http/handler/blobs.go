@@ -23,7 +23,7 @@ import (
 	"regexp"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
-	"github.com/jlsalvador/simple-registry/pkg/http"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -50,7 +50,7 @@ func (m *ServeMux) BlobsGet(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}
@@ -122,7 +122,7 @@ func (m *ServeMux) BlobsDelete(
 	r *netHttp.Request,
 ) {
 	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*http.HttpError); ok {
+	if err, ok := err.(*httpErrors.HttpError); ok {
 		w.WriteHeader(err.Status)
 		return
 	}

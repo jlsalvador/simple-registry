@@ -18,6 +18,8 @@ import (
 	netHttp "net/http"
 	"regexp"
 	"strconv"
+
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 )
 
 var regExpRange = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
@@ -28,12 +30,12 @@ var regExpRange = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
 func ParseRequestContentRange(r *netHttp.Request) (start int64, end int64, err error) {
 	raw := r.Header.Get("Content-Range")
 	if raw == "" {
-		return -1, -1, ErrRequestedRangeNotSatisfiable
+		return -1, -1, httpErrors.ErrRequestedRangeNotSatisfiable
 	}
 
 	match := regExpRange.FindStringSubmatch(raw)
 	if len(match) != 3 {
-		return -1, -1, ErrRequestedRangeNotSatisfiable
+		return -1, -1, httpErrors.ErrRequestedRangeNotSatisfiable
 	}
 
 	start, _ = strconv.ParseInt(match[1], 10, 64) // ignore error because it's already validated by the regexp.

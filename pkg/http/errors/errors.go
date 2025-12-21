@@ -1,4 +1,4 @@
-package http
+package errors
 
 import "net/http"
 
@@ -17,6 +17,12 @@ var ErrBadRequest = HttpError{
 var ErrUnauthorized = HttpError{
 	Status: http.StatusUnauthorized,
 }
+var ErrNotFound = HttpError{
+	Status: http.StatusNotFound,
+}
 var ErrRequestedRangeNotSatisfiable = HttpError{
 	Status: http.StatusRequestedRangeNotSatisfiable,
+}
+var ErrInternalServerError = HttpError{
+	Status: http.StatusInternalServerError,
 }
