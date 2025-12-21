@@ -20,7 +20,7 @@ func CmdFn() error {
 	}
 
 	var cfg *config.Config
-	if flags.CfgDir != "" {
+	if len(flags.CfgDir) > 0 {
 		cfg, err = config.NewFromYamlDir(
 			flags.CfgDir,
 			flags.DataDir,

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jlsalvador/simple-registry/pkg/log"
+	cliTerm "github.com/jlsalvador/simple-registry/pkg/cli/term"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/term"
 )
@@ -13,7 +13,7 @@ const CmdName = "genhash"
 const CmdHelp = "Generate a hash for the given password and exit"
 
 func isPiped() bool {
-	return !log.IsTerminal(os.Stdin)
+	return !cliTerm.IsTerminal(os.Stdin)
 }
 
 func CmdFn() error {

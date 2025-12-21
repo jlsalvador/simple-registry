@@ -24,18 +24,13 @@ import (
 	cmdServe "github.com/jlsalvador/simple-registry/internal/cmd/serve"
 	cmdVersion "github.com/jlsalvador/simple-registry/internal/cmd/version"
 	"github.com/jlsalvador/simple-registry/internal/version"
+	cliCmd "github.com/jlsalvador/simple-registry/pkg/cli/cmd"
 )
 
-type Cmd struct {
-	Name string
-	Help string
-	Fn   func() error
-}
-
-var cmds = []Cmd{
-	{cmdGenHash.CmdName, cmdGenHash.CmdHelp, cmdGenHash.CmdFn},
-	{cmdServe.CmdName, cmdServe.CmdHelp, cmdServe.CmdFn},
-	{cmdVersion.CmdName, cmdVersion.CmdHelp, cmdVersion.CmdFn},
+var cmds = []cliCmd.Cmd{
+	{Name: cmdGenHash.CmdName, Help: cmdGenHash.CmdHelp, Fn: cmdGenHash.CmdFn},
+	{Name: cmdServe.CmdName, Help: cmdServe.CmdHelp, Fn: cmdServe.CmdFn},
+	{Name: cmdVersion.CmdName, Help: cmdVersion.CmdHelp, Fn: cmdVersion.CmdFn},
 }
 
 func help() {
@@ -57,7 +52,7 @@ func main() {
 	}
 
 	var err error
-	if i := slices.IndexFunc(cmds, func(cmd Cmd) bool {
+	if i := slices.IndexFunc(cmds, func(cmd cliCmd.Cmd) bool {
 		return cmd.Name == os.Args[1]
 	}); i >= 0 {
 		err = cmds[i].Fn()

@@ -60,12 +60,24 @@ func parseYamlDir(dirName string) (
 }
 
 func NewFromYamlDir(
-	dirName,
+	dirsName []string,
 	dataDir string,
 ) (*Config, error) {
-	tokens, users, roles, roleBindings, err := parseYamlDir(dirName)
-	if err != nil {
-		return nil, err
+	tokens := []rbac.Token{}
+	users := []rbac.User{}
+	roles := []rbac.Role{}
+	roleBindings := []rbac.RoleBinding{}
+
+	for _, dirName := range dirsName {
+		ts, us, rs, rbs, err := parseYamlDir(dirName)
+		if err != nil {
+			return nil, err
+		}
+
+		tokens = append(tokens, ts...)
+		users = append(users, us...)
+		roles = append(roles, rs...)
+		roleBindings = append(roleBindings, rbs...)
 	}
 
 	rbacEngine := rbac.Engine{
