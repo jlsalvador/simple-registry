@@ -43,7 +43,7 @@ Pull requests are welcome.
 ### 1. Generate a password hash
 
 ```sh
-simple-registry -genhash
+simple-registry genhash
 ```
 
 You will be prompted for a password and a secure hash will be printed.
