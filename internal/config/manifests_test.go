@@ -15,10 +15,12 @@
 package config_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
@@ -74,7 +76,10 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		tokens, users, roles, bindings := config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		tokens, users, roles, bindings, err := config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
 		if len(tokens) != 1 || tokens[0].Username != "admin" {
 			t.Fatalf("token not parsed correctly")
@@ -127,6 +132,9 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, _, _, _ = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		if !errors.Is(err, rbac.ErrInvalidVerb) {
+			t.Fatalf("expected rbac.ErrInvalidVerb error: %v", err)
+		}
 	})
 }

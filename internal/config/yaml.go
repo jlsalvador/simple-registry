@@ -6,21 +6,16 @@ import (
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
+	"github.com/jlsalvador/simple-registry/internal/data/proxy"
 	"github.com/jlsalvador/simple-registry/pkg/log"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
-func parseYamlDir(dirName string) (
-	tokens []rbac.Token,
-	users []rbac.User,
-	roles []rbac.Role,
-	roleBindings []rbac.RoleBinding,
-	err error,
-) {
+func parseYamlDir(dirName string) (manifests []any, err error) {
 	entries, err := os.ReadDir(dirName)
 	if err != nil {
-		return tokens, users, roles, roleBindings, nil
+		return nil, nil
 	}
 
 	for _, entry := range entries {
@@ -46,38 +41,31 @@ func parseYamlDir(dirName string) (
 
 		m, err := yamlscheme.DecodeAll(f)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, err
 		}
 
-		t, u, r, rb := GetTokensUsersRolesRoleBindingsFromManifests(m)
-		tokens = append(tokens, t...)
-		users = append(users, u...)
-		roles = append(roles, r...)
-		roleBindings = append(roleBindings, rb...)
+		manifests = append(manifests, m...)
 	}
 
-	return tokens, users, roles, roleBindings, nil
+	return manifests, nil
 }
 
 func NewFromYamlDir(
 	dirsName []string,
 	dataDir string,
 ) (*Config, error) {
-	tokens := []rbac.Token{}
-	users := []rbac.User{}
-	roles := []rbac.Role{}
-	roleBindings := []rbac.RoleBinding{}
-
+	manifests := []any{}
 	for _, dirName := range dirsName {
-		ts, us, rs, rbs, err := parseYamlDir(dirName)
+		ms, err := parseYamlDir(dirName)
 		if err != nil {
 			return nil, err
 		}
+		manifests = append(manifests, ms...)
+	}
 
-		tokens = append(tokens, ts...)
-		users = append(users, us...)
-		roles = append(roles, rs...)
-		roleBindings = append(roleBindings, rbs...)
+	tokens, users, roles, roleBindings, err := GetTokensUsersRolesRoleBindingsFromManifests(manifests)
+	if err != nil {
+		return nil, err
 	}
 
 	rbacEngine := rbac.Engine{
@@ -87,9 +75,17 @@ func NewFromYamlDir(
 		RoleBindings: roleBindings,
 	}
 
+	proxies, err := GetProxiesFromManifests(manifests)
+	if err != nil {
+		return nil, err
+	}
+
+	fs := filesystem.NewFilesystemDataStorage(dataDir)
+	ds := proxy.NewProxyDataStorage(fs, proxies)
+
 	return &Config{
 		WWWAuthenticate: `Basic realm="simple-registry"`,
 		Rbac:            rbacEngine,
-		Data:            filesystem.NewFilesystemDataStorage(dataDir),
+		Data:            ds,
 	}, nil
 }

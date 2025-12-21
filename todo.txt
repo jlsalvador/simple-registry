@@ -5,9 +5,10 @@ x (B) 2025-12-20 2025-12-18 merge existing +rbac parsing logic so that +rbac can
 x (B) 2025-12-20 2025-12-18 add support for a global configuration within the +yaml parsing system. @todo
 x (C) 2025-12-20 2025-12-18 remove the obsolete rbacDir flag and clean up unused code in the +rbac parsing package. @todo
 x (D) 2025-12-21 2025-12-20 add support for multiples cfgdir flag for +cmd serve. @todo
-(C) 2025-12-18 review and eliminate any remaining dead code after the refactor. @todo
-(D) 2025-12-18 update documentation and README to reflect the new +yaml parser package structure. @todo
-(B) 2025-12-17 pull through +cache as a mirror. @todo
+x (C) 2025-12-21 2025-12-18 review and eliminate any remaining dead code after the refactor. @todo
+x (D) 2025-12-21 2025-12-18 update documentation and README to reflect the new +yaml parser package structure. @todo
+x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
+(D) 2025-12-21 pull through +cache ttl support. @todo
 (C) 2025-12-20 add +manifest field "enabled". @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
 2025-12-17 +gc on demand. @whish

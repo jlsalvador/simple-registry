@@ -1,0 +1,17 @@
+apiVersion: simple-registry.jlsalvador.online/v1beta1
+kind: PullThroughCache
+metadata:
+  name: docker-io
+spec:
+  upstream:
+    url: https://registry-1.docker.io
+    timeout: 60s
+    # # CAUTION!
+    # # Private resources that this user has access to upstream is made available
+    # # on your mirror.
+    # username: your-docker-username
+    # password: your-docker-password
+    passwordFile: /run/secrets/dockerhub-password
+    ttl: 30d
+  scopes:
+   - "^library/.+$"
