@@ -75,9 +75,9 @@ func (m *ServeMux) ManifestsGet(
 
 	// "reference" must be a digest or a tag.
 	reference := r.PathValue("reference")
-	if _, _, err := digest.Parse(reference); err == nil {
-		// Do nothing.
-	} else if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
+	if regexp.MustCompile("^" + registry.RegExpDigest + "$"); err == nil {
+		// Do nothing if reference is a digest.
+	} else if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
 		rbacRepo += ":" + reference
 	} else {
 		w.WriteHeader(netHttp.StatusBadRequest)
@@ -97,7 +97,7 @@ func (m *ServeMux) ManifestsGet(
 	}
 
 	// Get the manifest blob from the data storage.
-	blob, size, err := m.cfg.Data.ManifestGet(repo, reference)
+	blob, size, digest, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
@@ -120,6 +120,7 @@ func (m *ServeMux) ManifestsGet(
 	header := w.Header()
 	header.Set("Content-Type", contentType)
 	header.Set("Content-Length", fmt.Sprint(size))
+	header.Set("Docker-Content-Digest", digest)
 	w.WriteHeader(netHttp.StatusOK)
 	w.Write(manifest)
 }
@@ -192,7 +193,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 
 	// Re-read the just written manifest.
-	f, _, err := m.cfg.Data.ManifestGet(repo, reference)
+	f, _, _, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return

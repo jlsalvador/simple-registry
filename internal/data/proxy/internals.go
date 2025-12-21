@@ -237,8 +237,43 @@ func fetchReferrersFromUpstream(
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, -1, fmt.Errorf("upstream error: %s", resp.Status)
+		return nil, -1, errors.Join(ErrUpstreamError, fmt.Errorf("upstream error: %s", resp.Status))
 	}
 
 	return resp.Body, resp.ContentLength, nil
+}
+
+func fetchManifestDigestHEAD(
+	proxy *Proxy,
+	repo,
+	reference string,
+) (string, error) {
+	url := fmt.Sprintf(
+		"%s/v2/%s/manifests/%s",
+		strings.TrimRight(proxy.Url, "/"),
+		repo,
+		reference,
+	)
+
+	req, err := newUpstreamRequest(proxy, http.MethodHead, url, manifestAccept)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := doUpstreamRequest(proxy, req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Join(ErrUpstreamError, fmt.Errorf("upstream HEAD failed: %s", resp.Status))
+	}
+
+	dgst := resp.Header.Get("Docker-Content-Digest")
+	if dgst == "" {
+		return "", errors.New("missing Docker-Content-Digest")
+	}
+
+	return dgst, nil
 }

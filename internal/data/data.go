@@ -27,7 +27,7 @@ type DataStorage interface {
 	BlobsUploadSize(repo, uuid string) (size int64, err error)
 
 	ManifestPut(repo, reference string, r io.Reader) (digest string, err error)
-	ManifestGet(repo, reference string) (r io.ReadCloser, size int64, err error)
+	ManifestGet(repo, reference string) (r io.ReadCloser, size int64, digest string, err error)
 	ManifestDelete(repo, reference string) error
 
 	TagsList(repo string) ([]string, error)

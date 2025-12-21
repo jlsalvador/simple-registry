@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/jlsalvador/simple-registry/pkg/digest"
+	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -43,7 +43,7 @@ func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manif
 
 	subjectDigest := manifest.Subject.Digest
 
-	algo, hash, err := digest.Parse(subjectDigest)
+	algo, hash, err := pkgDigest.Parse(subjectDigest)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader)
 		return "", ErrRepoInvalid
 	}
 
-	hasher, err := digest.NewHasher(manifestAlgo)
+	hasher, err := pkgDigest.NewHasher(manifestAlgo)
 	if err != nil {
 		return "", err
 	}
@@ -135,12 +135,17 @@ func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader)
 }
 
 // ManifestGet retrieves a manifest using either a tag or a digest.
-func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (r io.ReadCloser, size int64, err error) {
+func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
+	r io.ReadCloser,
+	size int64,
+	digest string,
+	err error,
+) {
 	if !regexp.MustCompile("^" + registry.RegExpName + "$").MatchString(repo) {
-		return nil, -1, ErrRepoInvalid
+		return nil, -1, "", ErrRepoInvalid
 	}
 
-	algo, hash, err := digest.Parse(reference)
+	algo, hash, err := pkgDigest.Parse(reference)
 	if err == nil {
 		// If reference is a digest, use it directly.
 	} else if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
@@ -151,11 +156,11 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (r io.ReadCl
 		)
 		b, err := os.ReadFile(tagLink)
 		if err != nil {
-			return nil, -1, err
+			return nil, -1, "", err
 		}
-		algo, hash, err = digest.Parse(string(b))
+		algo, hash, err = pkgDigest.Parse(string(b))
 		if err != nil {
-			return nil, -1, err
+			return nil, -1, "", err
 		}
 	}
 
@@ -163,17 +168,19 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (r io.ReadCl
 	blobPath := filepath.Join(s.base, "blobs", algo, hash[0:2], hash)
 	f, err := os.Open(blobPath)
 	if err != nil {
-		return nil, -1, fmt.Errorf("cannot open blob %s: %w", blobPath, err)
+		return nil, -1, "", fmt.Errorf("cannot open blob %s: %w", blobPath, err)
 	}
 
 	// Get the size of the blob.
 	stat, err := f.Stat()
 	if err != nil {
-		return nil, -1, err
+		return nil, -1, "", err
 	}
 	size = stat.Size()
 
-	return f, size, nil
+	digest = algo + ":" + hash
+
+	return f, size, digest, nil
 }
 
 func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
@@ -197,7 +204,7 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	}
 
 	// Case 2: reference must be a digest.
-	algo, hash, err := digest.Parse(reference)
+	algo, hash, err := pkgDigest.Parse(reference)
 	if err != nil {
 		return err
 	}
