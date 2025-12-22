@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"regexp"
 
+	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -22,7 +23,7 @@ func (s *ProxyDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, size 
 		return r, size, nil
 	}
 
-	if !errors.Is(err, fs.ErrNotExist) {
+	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
 		return nil, -1, err
 	}
 
@@ -89,7 +90,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 
 		_ = r.Close()
 	}
-	if !errors.Is(err, fs.ErrNotExist) {
+	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
 		return nil, -1, "", err
 	}
 
@@ -127,7 +128,7 @@ func (s *ProxyDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, siz
 	if err == nil {
 		return r, size, nil
 	}
-	if !errors.Is(err, fs.ErrNotExist) {
+	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
 		return nil, -1, err
 	}
 

@@ -17,13 +17,16 @@ package filesystem
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
+	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -156,6 +159,10 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 		)
 		b, err := os.ReadFile(tagLink)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, -1, "", errors.Join(httpErr.ErrNotFound, err)
+			}
+
 			return nil, -1, "", err
 		}
 		algo, hash, err = pkgDigest.Parse(string(b))
@@ -168,6 +175,10 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 	blobPath := filepath.Join(s.base, "blobs", algo, hash[0:2], hash)
 	f, err := os.Open(blobPath)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, -1, "", errors.Join(httpErr.ErrNotFound, err)
+		}
+
 		return nil, -1, "", fmt.Errorf("cannot open blob %s: %w", blobPath, err)
 	}
 
@@ -185,7 +196,7 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 
 func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	if !regexp.MustCompile("^" + registry.RegExpName + "$").MatchString(repo) {
-		return ErrRepoInvalid
+		return errors.Join(httpErr.ErrBadRequest, ErrRepoInvalid)
 	}
 
 	// Case 1: reference is a tag.
@@ -197,7 +208,7 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 
 		// Docker returns 404 if tag does not exist
 		if _, err := os.Stat(tagDir); err != nil {
-			return err
+			return errors.Join(httpErr.ErrNotFound, err)
 		}
 
 		return os.RemoveAll(tagDir)
@@ -206,7 +217,7 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	// Case 2: reference must be a digest.
 	algo, hash, err := pkgDigest.Parse(reference)
 	if err != nil {
-		return err
+		return errors.Join(httpErr.ErrBadRequest, err)
 	}
 
 	revisionDir := filepath.Join(
@@ -216,12 +227,12 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 
 	// Docker returns 404 if revision does not exist
 	if _, err := os.Stat(revisionDir); err != nil {
-		return err
+		return errors.Join(httpErr.ErrNotFound, err)
 	}
 
 	// Remove revision link
 	if err := os.RemoveAll(revisionDir); err != nil {
-		return err
+		return errors.Join(httpErr.ErrInternalServerError, err)
 	}
 
 	//TODO: Garbage collection of unused revisions and tags.

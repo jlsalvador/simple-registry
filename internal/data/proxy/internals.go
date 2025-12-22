@@ -110,7 +110,8 @@ func fetchManifestFromUpstream(
 		return nil, -1, err
 	}
 
-	if resp.StatusCode == http.StatusNotFound {
+	// Docker Hub could return 401 on manifest not found.
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
 		return nil, -1, fs.ErrNotExist
 	}
@@ -148,7 +149,8 @@ func fetchBlobFromUpstream(
 		return nil, -1, err
 	}
 
-	if resp.StatusCode == http.StatusNotFound {
+	// Docker Hub could return 401 on blob not found.
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
 		return nil, -1, fs.ErrNotExist
 	}

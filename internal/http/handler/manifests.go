@@ -99,6 +99,10 @@ func (m *ServeMux) ManifestsGet(
 	// Get the manifest blob from the data storage.
 	blob, size, digest, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
+		if httpErr, ok := err.(httpErrors.HttpError); ok {
+			w.WriteHeader(httpErr.Status)
+			return
+		}
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
 			return
@@ -188,6 +192,11 @@ func (m *ServeMux) ManifestsPut(
 	defer r.Body.Close()
 	dgst, err := m.cfg.Data.ManifestPut(repo, reference, r.Body)
 	if err != nil {
+		if httpErr, ok := err.(httpErrors.HttpError); ok {
+			w.WriteHeader(httpErr.Status)
+			return
+		}
+
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -195,6 +204,11 @@ func (m *ServeMux) ManifestsPut(
 	// Re-read the just written manifest.
 	f, _, _, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
+		if httpErr, ok := err.(httpErrors.HttpError); ok {
+			w.WriteHeader(httpErr.Status)
+			return
+		}
+
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -280,6 +294,10 @@ func (m *ServeMux) ManifestsDelete(
 	}
 
 	if err := m.cfg.Data.ManifestDelete(repo, reference); err != nil {
+		if httpErr, ok := err.(httpErrors.HttpError); ok {
+			w.WriteHeader(httpErr.Status)
+			return
+		}
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
 			return
