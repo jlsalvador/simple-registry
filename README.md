@@ -1,182 +1,128 @@
-# Simple Registry
+# 📦 Simple Registry
 
-A lightweight, self-hosted OCI-compatible container registry focused on
-simplicity, security and fine-grained access control.
-
-## Table of Contents
-
-1. [Features](#features)
-2. [Status](#status)
-3. [Quick Star](#quick-start)
-4. [Authentication Model](#authentication-model)
-5. [Authorization (RBAC)](#authorization-rbac)
-6. [OCI Compatibility Notes](#oci-compatibility-notes)
-7. [License](#license)
+A lightweight OCI-compatible container registry with RBAC support and pull-through caching.
 
 ---
 
-## Features
+## 🚀 Features
 
-- 🎖️ Implements the [OCI Distribution Specification v1.1.1][oci-spec].
-- 🪶 Extremely lightweight, minimal dependencies.
-- 🔑 HTTP Basic authentication (username & password).
-- ⏰ Bearer token authentication with expiration support.
-- 🛂 Fine-grained RBAC (per-repository, per-action, per-role).
-- 🕵️ Anonymous access (optional, controlled via RBAC).
+- __🎖️ OCI Native:__ Implements the [OCI Distribution Specification v1.1.1][oci-spec].
+- __🪶 Lightweight:__ Low memory footprint and minimal dependencies.
+- __🛂 Granular RBAC:__ Fine-grained control per repository, action, and role.
+- __📦 Pull-through Caching:__ On-demand caching from external registries.
+- __🔒 Flexible Authentication:__ Anonymous access, Basic Auth, and time-bound Bearer tokens.
+- __🌀 Stateless & Scalable:__ High availability supported when backed by shared storage.
 
 ---
 
-## Status
+## 🏗️ Status
 
-🚧 **Active development**
+The core functionality is stable, and OCI conformance is actively being validated.
 
-- Core functionality is stable
-- OCI conformance tests are actively being validated
-- Internal APIs may still evolve
+- ✅ Completed:
+  - Core push/pull
+  - RBAC, and Auth models.
+  - Pull-through cache.
+- 📆 Upcoming:
+  - Garbage collection of unused blobs.
+  - The internal YAML configuration schema is still evolving and may change in
+    backward-incompatible ways before v1.0.
 
 Pull requests are welcome.
 
 ---
 
-## Quick Start
+## 🏁 Quick Start
 
-### 1. Generate a password hash
+### 1. Secure Your Credentials
+
+Generate a secure password hash for your YAML configuration:
 
 ```sh
 simple-registry genhash
 ```
 
-You will be prompted for a password and a secure hash will be printed.
-Store this hash in your RBAC configuration.
+### 2. Launch the registry
 
-### 2. Start the registry
+Run the registry with a data directory and administrative credentials:
 
 ```sh
-simple-registry \
-  -adminname admin \
-  -adminpwd-file ./admin-password.txt \
+simple-registry serve \
   -datadir ./data \
+  -adminname admin \
+  -adminpwdfile ./admin-password.txt \
   -addr 0.0.0.0:5000
 ```
 
-With TLS:
+> __ℹ️ Note:__ For production, use the `-cert` and `-key` flags to listen on `https://`.
 
 ```sh
+# Generate a self-signed TLS certificate for testing purposes.
 openssl req -new -x509 \
     -keyout tls.key \
     -out tls.crt \
     -days 36500 \
-    -nodes -subj "/C=SE/ST=ES/L=Seville/O=ACME/CN=localhost"
+    -nodes -subj "/C=SE/ST=ES/L=Sevilla/O=ACME/CN=localhost"
 
-simple-registry \
-  -adminname admin \
-  -adminpwd-file ./admin-password.txt \
+simple-registry serve \
   -datadir /var/lib/registry \
+  -adminname admin \
+  -adminpwdfile ./admin-password.txt \
   -cert tls.crt \
   -key tls.key
 ```
 
-### 3. Login with Docker or Podman
+### 3. Usage Example
 
 ```sh
+# Login to your new registry
 docker login localhost:5000
-```
 
-or
-
-```sh
-podman login --tls-verify=false localhost:5000
-```
-
-> ⚠️ When TLS is enabled with a self-signed certificate,
-> you may need `--tls-verify=false` or to trust the CA explicitly.
-
-### 4. Push & pull images
-
-```sh
+# Tag and push an image
 docker tag busybox localhost:5000/library/busybox
 docker push localhost:5000/library/busybox
-docker pull localhost:5000/library/busybox
 ```
 
 ---
 
-## Authentication Model
+## ⚙️ Configuration & RBAC
 
-Simple Registry currently supports **three authentication modes**:
+The registry is configured via YAML manifests.
+You can split your configuration into multiple files and directories using the `-cfgdir` flag.
 
-### 🔓 Anonymous access
+| Component | Description                                              |
+| --------- | -------------------------------------------------------- |
+| Storage   | Defines where the blobs and manifests are stored.        |
+| Identity  | Definition of Users and Groups.                          |
+| RBAC      | Rules linking roles and role-bindings to control access. |
+| Cache     | Configuration for pull-through cache targets.            |
 
-If an `anonymous` user exists in RBAC configuration:
+Example:
 
-- Requests without `Authorization` headers are treated as `anonymous`
-- Permissions are evaluated normally via RBAC rules
-- No authentication challenge is sent unless required
-
-This allows:
-
-- Public pull-only registries
-- Mixed public/private repositories
-
-### 🔑 HTTP Basic authentication
-
-When a request is **not allowed for anonymous** access:
-
-- The registry responds with:
-
-```text
-WWW-Authenticate: Basic realm="simple-registry"
+```sh
+simple-registry serve \
+  -cfgdir ./config \
+  -cfgdir ./rbac \
+  -cfgdir ./proxies
 ```
 
-- Docker/Podman clients will retry automatically with credentials
-- Credentials are validated against RBAC users
+---
 
-This matches Docker Registry client expectations.
+## 🔒 Authentication Model
 
-### ⏰ Bearer tokens
+You can define, using regular expressions, which users and groups have access to specific repositories.
 
-Bearer tokens can be issued externally and validated by the registry:
+Simple Registry evaluates requests in three tiers:
 
-- Tokens are bound to a user
-- Tokens have an expiration time
-- Expired tokens are rejected automatically
+1. __Anonymous:__ Mix public/private repositories.
+2. __Basic Auth:__ Defines users and groups for basic authentication. Hash password by bcrypt.
+3. __Bearer Token:__ Supports issued tokens with built-in expiration validation.
+
+> __ℹ️ Note:__ There are some manifests examples in [docs/yaml/examples](docs/yaml/examples)
 
 ---
 
-## Authorization (RBAC)
-
-> You can find RBAC manifests examples in [docs/yaml/examples](docs/yaml/examples)
-
-Authorization is enforced **per request**:
-
-- User identity is resolved (anonymous, basic auth, or bearer token)
-- RBAC rules are evaluated
-- The request is either:
-
-  - ✅ Allowed
-  - ❌ Rejected with `401 Unauthorized` (anonymous)
-  - ❌ Rejected with `403 Forbidden` (authenticated but unauthorized)
-
-RBAC is applied uniformly across all endpoints.
-
----
-
-## OCI Compatibility Notes
-
-- Manifests and blobs are stored as raw OCI blobs.
-- Manifest lists (indexes) and single-platform manifests are supported.
-- API is implemented according to [OCI Distribution Specification v1.1.1][oci-spec].
-
-Docker and Podman clients are tested for:
-
-- Pull
-- Push
-- Multi-arch images
-- Referrers (attestations, artifacts)
-
----
-
-## License
+## 📄 License
 
 Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>.
 
