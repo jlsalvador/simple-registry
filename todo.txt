@@ -10,11 +10,12 @@ x (D) 2025-12-21 2025-12-18 update documentation and README to reflect the new +
 x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
 x (C) 2025-12-21 2025-12-21 pull through +cache refresh from upstream. @todo
 x (B) 2025-12-22 2025-12-21 pull through +cache pwd file support. @todo
+(A) 2025-12-22 config data dir by +yaml manifest. @todo
+(B) 2025-12-17 +gc on demand. @todo
+(C) 2025-12-17 +gc on timer. @todo
+(B) 2025-12-20 add +yaml manifest field "enabled". @todo
 (D) 2025-12-21 pull through +cache ttl support. @todo
-(C) 2025-12-20 add +manifest field "enabled". @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
-2025-12-17 +gc on demand. @whish
-2025-12-17 +gc on timer. @whish
 2025-12-17 external optional auth. +rbac @whish
 2025-12-17 web ui for admin. +admin @whish
 2025-12-17 reload +yaml on demand. @whish
