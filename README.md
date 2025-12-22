@@ -106,6 +106,8 @@ simple-registry serve \
   -cfgdir ./proxies
 ```
 
+> **ℹ️ Note:** There are some manifests examples in [docs/rbac/examples](docs/rbac/examples)
+
 ---
 
 ## 🔒 Authentication Model
@@ -117,8 +119,6 @@ Simple Registry evaluates requests in three tiers:
 1. **Anonymous:** Mix public/private repositories.
 2. **Basic Auth:** Defines users and groups for basic authentication. Hash password by bcrypt.
 3. **Bearer Token:** Supports issued tokens with built-in expiration validation.
-
-> **ℹ️ Note:** There are some manifests examples in [docs/rbac/examples](docs/rbac/examples)
 
 ---
 
