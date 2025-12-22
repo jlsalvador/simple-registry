@@ -9,7 +9,7 @@ x (C) 2025-12-21 2025-12-18 review and eliminate any remaining dead code after t
 x (D) 2025-12-21 2025-12-18 update documentation and README to reflect the new +yaml parser package structure. @todo
 x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
 x (C) 2025-12-21 2025-12-21 pull through +cache refresh from upstream. @todo
-(B) 2025-12-21 pull through +cache pwd file support. @todo
+x (B) 2025-12-22 2025-12-21 pull through +cache pwd file support. @todo
 (D) 2025-12-21 pull through +cache ttl support. @todo
 (C) 2025-12-20 add +manifest field "enabled". @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo

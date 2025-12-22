@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/data/proxy"
@@ -153,6 +154,14 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 func GetProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error) {
 	for _, manifest := range manifests {
 		if m, ok := manifest.(*PullThroughCacheManifest); ok {
+			if m.Spec.Upstream.PasswordFile != "" {
+				password, err := os.ReadFile(m.Spec.Upstream.PasswordFile)
+				if err != nil {
+					return nil, err
+				}
+				m.Spec.Upstream.Password = string(password)
+			}
+
 			proxies = append(proxies, proxy.Proxy{
 				Url:      m.Spec.Upstream.URL,
 				Timeout:  m.Spec.Upstream.Timeout,

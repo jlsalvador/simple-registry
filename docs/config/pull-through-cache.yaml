@@ -11,7 +11,7 @@ spec:
     # # on your mirror.
     # username: your-docker-username
     # password: your-docker-password
-    passwordFile: /run/secrets/dockerhub-password
+    # passwordFile: /run/secrets/dockerhub-password
     ttl: 30d
   scopes:
    - "^library/.+$"
