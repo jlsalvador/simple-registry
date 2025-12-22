@@ -20,3 +20,4 @@ x (B) 2025-12-22 2025-12-21 pull through +cache pwd file support. @todo
 2025-12-17 web ui for admin. +admin @whish
 2025-12-17 reload +yaml on demand. @whish
 2025-12-17 auto reload +yaml. @whish
+2025-12-22 +catalog pagination. @whish
