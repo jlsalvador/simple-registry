@@ -6,12 +6,12 @@ A lightweight OCI-compatible container registry with RBAC support and pull-throu
 
 ## 🚀 Features
 
-- __🎖️ OCI Native:__ Implements the [OCI Distribution Specification v1.1.1][oci-spec].
-- __🪶 Lightweight:__ Low memory footprint and minimal dependencies.
-- __🛂 Granular RBAC:__ Fine-grained control per repository, action, and role.
-- __📦 Pull-through Caching:__ On-demand caching from external registries.
-- __🔒 Flexible Authentication:__ Anonymous access, Basic Auth, and time-bound Bearer tokens.
-- __🌀 Stateless & Scalable:__ High availability supported when backed by shared storage.
+- **🎖️ OCI Native:** Implements the [OCI Distribution Specification v1.1.1][oci-spec].
+- **🪶 Lightweight:** Low memory footprint and minimal dependencies.
+- **🛂 Granular RBAC:** Fine-grained control per repository, action, and role.
+- **📦 Pull-through Caching:** On-demand caching from external registries.
+- **🔒 Flexible Authentication:** Anonymous access, Basic Auth, and time-bound Bearer tokens.
+- **🌀 Stateless & Scalable:** High availability supported when backed by shared storage.
 
 ---
 
@@ -54,7 +54,7 @@ simple-registry serve \
   -addr 0.0.0.0:5000
 ```
 
-> __ℹ️ Note:__ For production, use the `-cert` and `-key` flags to listen on `https://`.
+> **ℹ️ Note:** For production, use the `-cert` and `-key` flags to listen on `https://`.
 
 ```sh
 # Generate a self-signed TLS certificate for testing purposes.
@@ -114,11 +114,11 @@ You can define, using regular expressions, which users and groups have access to
 
 Simple Registry evaluates requests in three tiers:
 
-1. __Anonymous:__ Mix public/private repositories.
-2. __Basic Auth:__ Defines users and groups for basic authentication. Hash password by bcrypt.
-3. __Bearer Token:__ Supports issued tokens with built-in expiration validation.
+1. **Anonymous:** Mix public/private repositories.
+2. **Basic Auth:** Defines users and groups for basic authentication. Hash password by bcrypt.
+3. **Bearer Token:** Supports issued tokens with built-in expiration validation.
 
-> __ℹ️ Note:__ There are some manifests examples in [docs/yaml/examples](docs/yaml/examples)
+> **ℹ️ Note:** There are some manifests examples in [docs/rbac/examples](docs/rbac/examples)
 
 ---
 
