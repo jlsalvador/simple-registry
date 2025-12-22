@@ -14,14 +14,21 @@
 
 .DEFAULT_GOAL := build
 
-export BUILD_VERSION:=$(shell date --utc +%Y%m%d%H%M)
+BUILD_CURRENT_VERSION := $(strip $(shell git describe --tags --match='[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || printf 0.0.1))
+BUILD_VERSION_MAJOR ?= $(word 1, $(subst ., ,$(BUILD_CURRENT_VERSION)))
+BUILD_VERSION_MINOR ?= $(word 2, $(subst ., ,$(BUILD_CURRENT_VERSION)))
+BUILD_VERSION_PATCH ?= $(shell date --utc +%s)
+export BUILD_VERSION := $(BUILD_VERSION_MAJOR).$(BUILD_VERSION_MINOR).$(BUILD_VERSION_PATCH)
+
+MODULE_NAME := $(shell grep ^module go.mod | cut -d' ' -f2)
+VERSION_PKG := $(MODULE_NAME)/internal/version
 
 NPROCS = $(shell grep -c 'processor' /proc/cpuinfo || printf 1)
 MAKEFLAGS += -j$(NPROCS)
 
 BUILD_DIR ?= $(shell pwd)/build
 LDFLAGS=\
-	-X main.Version=${BUILD_VERSION} \
+	-X $(VERSION_PKG).AppVersion=${BUILD_VERSION} \
 	-extldflags=-static -w -s
 
 BINARY_NAME=simple-registry
@@ -29,6 +36,10 @@ ARCHITECTURES=x86-64 arm64
 GO_SOURCE=$(wildcard *.go)
 BINARIES=$(foreach ARCH, ${ARCHITECTURES}, ${BUILD_DIR}/${BINARY_NAME}.${BUILD_VERSION}.${ARCH})
 BINARIES_UPX=$(foreach BINARY, ${BINARIES}, ${BINARY}.upx)
+
+CONTAINER_TOOL ?= podman
+PLATFORMS ?= linux/arm64,linux/amd64
+IMG ?= jlsalvador/${BINARY_NAME}:latest
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -115,6 +126,21 @@ cover: ${BUILD_DIR}/cover.txt ${BUILD_DIR}/cover.html ## Generate coverture repo
 
 .PHONY: build
 build: ${BINARIES} ## Build project binary.
+
+.PHONY: container-build ## Build container images
+container-build: ${GO_SOURCE}
+	$(CONTAINER_TOOL) build \
+		--manifest $(IMG) \
+		--platform=$(PLATFORMS) \
+		--build-arg="LDFLAGS=${LDFLAGS}" \
+		--build-arg="TARGETBIN=$(BINARY_NAME)" \
+		-f Dockerfile .
+
+.PHONY: container-publish
+container-publish: container-build
+	$(CONTAINER_TOOL) manifest push \
+		--all \
+		$(IMG)
 
 .PHONY: all
 all: | clean test build ## Execute all tipical targets before publish.
