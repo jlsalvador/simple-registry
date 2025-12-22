@@ -39,7 +39,7 @@ BINARIES_UPX=$(foreach BINARY, ${BINARIES}, ${BINARY}.upx)
 
 CONTAINER_TOOL ?= podman
 PLATFORMS ?= linux/arm64,linux/amd64
-IMG ?= jlsalvador/${BINARY_NAME}:latest
+IMG ?= ${BINARY_NAME}:latest
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -78,6 +78,11 @@ help: ## Display this help.
 clean: ## Remove build directory.
 	go clean ; \
 	rm -rf "${BUILD_DIR}"
+
+.PHONE: container_clean
+container_clean: ## Remove container images.
+	-$(CONTAINER_TOOL) rmi $(IMG)
+	-$(CONTAINER_TOOL) manifest rm $(IMG)
 
 .PHONY: mrproper
 mrproper: clean ## Remove all generated files.
@@ -127,8 +132,8 @@ cover: ${BUILD_DIR}/cover.txt ${BUILD_DIR}/cover.html ## Generate coverture repo
 .PHONY: build
 build: ${BINARIES} ## Build project binary.
 
-.PHONY: container-build ## Build container images
-container-build: ${GO_SOURCE}
+.PHONY: container
+container: container_clean ${GO_SOURCE} ## Build container images
 	$(CONTAINER_TOOL) build \
 		--manifest $(IMG) \
 		--platform=$(PLATFORMS) \
@@ -136,8 +141,8 @@ container-build: ${GO_SOURCE}
 		--build-arg="TARGETBIN=$(BINARY_NAME)" \
 		-f Dockerfile .
 
-.PHONY: container-publish
-container-publish: container-build
+.PHONY: publish
+publish: container ## Publish container images
 	$(CONTAINER_TOOL) manifest push \
 		--all \
 		$(IMG)
