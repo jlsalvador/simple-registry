@@ -106,7 +106,7 @@ simple-registry serve \
   -cfgdir ./proxies
 ```
 
-> **ℹ️ Note:** There are some manifests examples in [docs/rbac/examples](docs/rbac/examples)
+> **ℹ️ Note:** There are some manifests examples in [docs/examples](docs/examples)
 
 ---
 
