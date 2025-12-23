@@ -39,7 +39,7 @@ Pull requests are welcome.
 Generate a secure password hash for your YAML configuration:
 
 ```sh
-simple-registry genhash
+simple-registry genhash > ./admin-password.txt
 ```
 
 ### 2. Launch the registry
