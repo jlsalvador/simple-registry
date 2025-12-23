@@ -101,8 +101,11 @@ docker run \
 
 ## ⚙️ Configuration & RBAC
 
-The registry is configured via YAML manifests.
-You can split your configuration into multiple files and directories using the `-cfgdir` flag.
+The registry can be configured via YAML manifests.
+You can split your configuration into multiple files and directories using the
+`-cfgdir` flag.
+
+Here are a few components that can be configured:
 
 | Component | Description                                              |
 | --------- | -------------------------------------------------------- |
