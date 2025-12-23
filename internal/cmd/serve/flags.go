@@ -29,7 +29,7 @@ func parseFlags() (flags Flags, err error) {
 	cfgDir := cliFlag.FlagValueStringSlice{}
 	flagSet.Var(&cfgDir, "cfgdir", "Directory with YAML configuration files\nCould be specified multiple times")
 
-	adminName := flagSet.String("adminname", "", "Administrator name\nIgnored if -cfgdir is set")
+	adminName := flagSet.String("adminname", "admin", "Administrator name\nIgnored if -cfgdir is set")
 	adminPwd := flagSet.String("adminpwd", "", "Administrator password\nLeaked by procfs! use adminpwdfile instead\nIgnored if -adminpwdfile is set\nIgnored if -cfgdir is set")
 	adminPwdFile := flagSet.String("adminpwdfile", "", "Fetch administrator password from file\nIgnored if -cfgdir is set")
 
