@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"regexp"
 
 	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -69,8 +68,8 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	}
 
 	proxy := s.matchProxy(repo)
-	isDigest := regexp.MustCompile("^" + registry.RegExpDigest + "$").MatchString(reference)
-	isTag := regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference)
+	isDigest := registry.RegExprDigest.MatchString(reference)
+	isTag := registry.RegExprTag.MatchString(reference)
 
 	// If Proxy is found and the reference is a tag,
 	// update manifest from the upstream.

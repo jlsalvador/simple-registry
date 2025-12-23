@@ -21,9 +21,7 @@ import (
 	"io"
 	"io/fs"
 	netHttp "net/http"
-	"regexp"
 
-	"github.com/jlsalvador/simple-registry/pkg/digest"
 	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -67,7 +65,7 @@ func (m *ServeMux) ManifestsGet(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -75,9 +73,9 @@ func (m *ServeMux) ManifestsGet(
 
 	// "reference" must be a digest or a tag.
 	reference := r.PathValue("reference")
-	if regexp.MustCompile("^" + registry.RegExpDigest + "$"); err == nil {
+	if registry.RegExprDigest.MatchString(reference) {
 		// Do nothing if reference is a digest.
-	} else if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
+	} else if registry.RegExprTag.MatchString(reference) {
 		rbacRepo += ":" + reference
 	} else {
 		w.WriteHeader(netHttp.StatusBadRequest)
@@ -158,7 +156,7 @@ func (m *ServeMux) ManifestsPut(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -166,9 +164,9 @@ func (m *ServeMux) ManifestsPut(
 
 	// "reference" must be a digest or a tag.
 	reference := r.PathValue("reference")
-	if _, _, err := digest.Parse(reference); err == nil {
+	if registry.RegExprDigest.MatchString(reference) {
 		// "reference" is a valid digest.
-	} else if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
+	} else if registry.RegExprTag.MatchString(reference) {
 		// "reference" is a tag.
 		rbacRepo += ":" + reference
 	} else {
@@ -264,7 +262,7 @@ func (m *ServeMux) ManifestsDelete(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -272,9 +270,9 @@ func (m *ServeMux) ManifestsDelete(
 
 	// "reference" must be a digest or a tag.
 	reference := r.PathValue("reference")
-	if _, _, err := digest.Parse(reference); err == nil {
+	if registry.RegExprDigest.MatchString(reference) {
 		// Do nothing.
-	} else if regexp.MustCompile(registry.RegExpTag).MatchString(reference) {
+	} else if registry.RegExprTag.MatchString(reference) {
 		rbacRepo += ":" + reference
 	} else {
 		w.WriteHeader(netHttp.StatusBadRequest)

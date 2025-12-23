@@ -19,10 +19,8 @@ import (
 	"fmt"
 	"io/fs"
 	netHttp "net/http"
-	"regexp"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
-	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/http"
 	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
@@ -168,7 +166,7 @@ func (m *ServeMux) BlobsUploadsPost(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -207,7 +205,7 @@ func (m *ServeMux) BlobsUploadsPost(
 
 	// Case 2. Single POST request to upload a blob.
 	digest := r.URL.Query().Get("digest")
-	if _, _, err := d.Parse(digest); err == nil {
+	if registry.RegExprDigest.MatchString(digest) {
 		blobsUploadsPostSingle(
 			m.cfg,
 			repo,
@@ -238,7 +236,7 @@ func (m *ServeMux) BlobsUploadsGet(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -315,7 +313,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -420,7 +418,7 @@ func (m *ServeMux) BlobsUploadsPut(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -434,7 +432,7 @@ func (m *ServeMux) BlobsUploadsPut(
 
 	// "digest" must be a valid digest.
 	digest := r.URL.Query().Get("digest")
-	if _, _, err := d.Parse(digest); err != nil {
+	if !registry.RegExprDigest.MatchString(digest) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -522,7 +520,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}

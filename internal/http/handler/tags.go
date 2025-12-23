@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	netHttp "net/http"
-	"regexp"
 	"slices"
 	"strconv"
 
@@ -58,7 +57,7 @@ func (m *ServeMux) TagsList(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}

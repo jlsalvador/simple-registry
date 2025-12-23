@@ -18,7 +18,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
@@ -30,7 +29,7 @@ import (
 // BlobsUploadCreate creates a new blob upload session for the given
 // repository, and returns the upload uuid.
 func (s *FilesystemDataStorage) BlobsUploadCreate(repo string) (uuid string, err error) {
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return "", ErrRepoInvalid
 	}
 
@@ -59,7 +58,7 @@ func (s *FilesystemDataStorage) BlobsUploadCreate(repo string) (uuid string, err
 
 // BlobsUploadCancel cancels a blob upload in progress.
 func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
 	if u.Validate(uuid) != nil {
@@ -75,7 +74,7 @@ func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
 // If "start" is less than 0, the data will be appended to the end of the
 // temporal blob data file.
 func (s *FilesystemDataStorage) BlobsUploadWrite(repo, uuid string, r io.Reader, start int64) error {
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
 	if u.Validate(uuid) != nil {
@@ -110,7 +109,7 @@ func blobsUploadCommit(
 	algo,
 	hash string,
 ) error {
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
 	if u.Validate(uuid) != nil {
@@ -189,7 +188,7 @@ func (s *FilesystemDataStorage) BlobsUploadCommit(repo, uuid, digest string) err
 }
 
 func (s *FilesystemDataStorage) BlobsUploadSize(repo, uuid string) (size int64, err error) {
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return -1, ErrRepoInvalid
 	}
 	if u.Validate(uuid) != nil {

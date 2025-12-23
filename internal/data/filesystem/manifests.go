@@ -23,7 +23,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
 	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
@@ -74,7 +73,7 @@ func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manif
 // ManifestPut stores a manifest identified by "reference" (either a tag or a digest)
 // into the repository.
 func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader) (dgst string, err error) {
-	if !regexp.MustCompile("^" + registry.RegExpName + "$").MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return "", ErrRepoInvalid
 	}
 
@@ -118,7 +117,7 @@ func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader)
 	}
 
 	// If reference is a tag, update tag link
-	if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
+	if registry.RegExprTag.MatchString(reference) {
 		tagLink := filepath.Join(
 			s.base, "repositories", repo, "_manifests",
 			"tags", reference, "current", "link",
@@ -144,14 +143,14 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 	digest string,
 	err error,
 ) {
-	if !regexp.MustCompile("^" + registry.RegExpName + "$").MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return nil, -1, "", ErrRepoInvalid
 	}
 
 	algo, hash, err := pkgDigest.Parse(reference)
 	if err == nil {
 		// If reference is a digest, use it directly.
-	} else if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
+	} else if registry.RegExprTag.MatchString(reference) {
 		// If reference is a tag, resolve tag to digest.
 		tagLink := filepath.Join(
 			s.base, "repositories", repo, "_manifests",
@@ -195,12 +194,12 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 }
 
 func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
-	if !regexp.MustCompile("^" + registry.RegExpName + "$").MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		return errors.Join(httpErr.ErrBadRequest, ErrRepoInvalid)
 	}
 
 	// Case 1: reference is a tag.
-	if regexp.MustCompile("^" + registry.RegExpTag + "$").MatchString(reference) {
+	if registry.RegExprTag.MatchString(reference) {
 		tagDir := filepath.Join(
 			s.base, "repositories", repo, "_manifests",
 			"tags", reference,

@@ -10,10 +10,13 @@ x (D) 2025-12-21 2025-12-18 update documentation and README to reflect the new +
 x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
 x (C) 2025-12-21 2025-12-21 pull through +cache refresh from upstream. @todo
 x (B) 2025-12-22 2025-12-21 pull through +cache pwd file support. @todo
-(A) 2025-12-22 config data dir by +yaml manifest. @todo
+x (D) 2025-12-23 2025-12-23 replace digest.Parse() by regexp when it is possible. @todo
+(A) 2025-12-23 implement +ocispec filtering by artifact-type. @todo
+(B) 2025-12-23 compile rbac scopes regexp. @todo
 (B) 2025-12-17 +gc on demand. @todo
-(C) 2025-12-17 +gc on timer. @todo
 (B) 2025-12-20 add +yaml manifest field "enabled". @todo
+(C) 2025-12-17 +gc on timer. @todo
+(D) 2025-12-22 config data dir by +yaml manifest. @todo
 (D) 2025-12-21 pull through +cache ttl support. @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
 2025-12-17 external optional auth. +rbac @whish

@@ -20,7 +20,6 @@ import (
 	"io"
 	"io/fs"
 	netHttp "net/http"
-	"regexp"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
@@ -57,14 +56,14 @@ func (m *ServeMux) BlobsGet(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.PathValue("digest")
-	if _, _, err := d.Parse(digest); err != nil {
+	if !registry.RegExprDigest.MatchString(digest) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -129,14 +128,14 @@ func (m *ServeMux) BlobsDelete(
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
-	if !regexp.MustCompile(registry.RegExpName).MatchString(repo) {
+	if !registry.RegExprName.MatchString(repo) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.PathValue("digest")
-	if _, _, err := d.Parse(digest); err != nil {
+	if !registry.RegExprDigest.MatchString(digest) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}

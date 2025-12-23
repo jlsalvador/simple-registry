@@ -32,6 +32,11 @@ type ServeMux struct {
 
 // registerRoutes registers the routes for the HTTP server.
 func (m *ServeMux) registerRoutes() {
+	exprName := strings.TrimPrefix(strings.TrimSuffix(registry.ExprName, "$"), "^")
+	exprDigest := strings.TrimPrefix(strings.TrimSuffix(registry.ExprDigest, "$"), "^")
+	exprTag := strings.TrimPrefix(strings.TrimSuffix(registry.ExprTag, "$"), "^")
+	exprUUID := strings.TrimPrefix(strings.TrimSuffix(registry.ExprUUID, "$"), "^")
+
 	// IMPORTANT:
 	// - Routes are matched in order.
 	// - First RegExp match wins.
@@ -51,70 +56,70 @@ func (m *ServeMux) registerRoutes() {
 		// Referrers:
 		route.NewRoute(
 			http.MethodGet,
-			"^/v2/(?P<name>"+registry.RegExpName+")/referrers/(?P<digest>"+registry.RegExpDigest+")/?$",
+			"^/v2/(?P<name>"+exprName+")/referrers/(?P<digest>"+exprDigest+")/?$",
 			m.ReferrersGet,
 		),
 
 		// Tags:
 		route.NewRoute(
 			http.MethodGet,
-			"^/v2/(?P<name>"+registry.RegExpName+")/tags/list/?$",
+			"^/v2/(?P<name>"+exprName+")/tags/list/?$",
 			m.TagsList,
 		),
 
 		// Blobs:
 		route.NewRoute(
 			http.MethodGet,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/(?P<digest>"+registry.RegExpDigest+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/(?P<digest>"+exprDigest+")/?$",
 			m.BlobsGet,
 		),
 		route.NewRoute(
 			http.MethodDelete,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/(?P<digest>"+registry.RegExpDigest+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/(?P<digest>"+exprDigest+")/?$",
 			m.BlobsDelete,
 		),
 
 		// Blobs uploads:
 		route.NewRoute(
 			http.MethodPost,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/uploads/?$",
 			m.BlobsUploadsPost,
 		),
 		route.NewRoute(
 			http.MethodGet,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/uploads/(?P<uuid>"+exprUUID+")/?$",
 			m.BlobsUploadsGet,
 		),
 		route.NewRoute(
 			http.MethodPatch,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/uploads/(?P<uuid>"+exprUUID+")/?$",
 			m.BlobsUploadsPatch,
 		),
 		route.NewRoute(
 			http.MethodPut,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/uploads/(?P<uuid>"+exprUUID+")/?$",
 			m.BlobsUploadsPut,
 		),
 		route.NewRoute(
 			http.MethodDelete,
-			"^/v2/(?P<name>"+registry.RegExpName+")/blobs/uploads/(?P<uuid>"+registry.RegExpUUID+")/?$",
+			"^/v2/(?P<name>"+exprName+")/blobs/uploads/(?P<uuid>"+exprUUID+")/?$",
 			m.BlobsUploadsDelete,
 		),
 
 		// Manifests:
 		route.NewRoute(
 			http.MethodGet,
-			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
+			"^/v2/(?P<name>"+exprName+")/manifests/(?P<reference>(?:"+exprTag+")|(?:"+exprDigest+"))/?$",
 			m.ManifestsGet,
 		),
 		route.NewRoute(
 			http.MethodPut,
-			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
+			"^/v2/(?P<name>"+exprName+")/manifests/(?P<reference>(?:"+exprTag+")|(?:"+exprDigest+"))/?$",
 			m.ManifestsPut,
 		),
 		route.NewRoute(
 			http.MethodDelete,
-			"^/v2/(?P<name>"+registry.RegExpName+")/manifests/(?P<reference>(?:"+registry.RegExpTag+")|(?:"+registry.RegExpDigest+"))/?$",
+			"^/v2/(?P<name>"+exprName+")/manifests/(?P<reference>(?:"+exprTag+")|(?:"+exprDigest+"))/?$",
 			m.ManifestsDelete,
 		),
 	}
