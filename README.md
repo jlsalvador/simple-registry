@@ -8,10 +8,10 @@ A lightweight OCI-compatible container registry with RBAC support and pull-throu
 
 - **🎖️ OCI Native:** Implements the [OCI Distribution Specification v1.1.1][oci-spec].
 - **🪶 Lightweight:** Low memory footprint and minimal dependencies.
-- **🛂 Granular RBAC:** Fine-grained control per repository, action, and role.
-- **📦 Pull-through Caching:** On-demand caching from external registries.
+- **🛂 Role-based Access Control (RBAC):** Granular control per repository, action, and role.
+- **📦 Pull-through Caching:** Configurable on-demand caching from external registries.
 - **🔒 Flexible Authentication:** Anonymous access, Basic Auth, and time-bound Bearer tokens.
-- **🌀 Stateless & Scalable:** High availability supported when backed by shared storage.
+- **🌀 Stateless & Scalable:** Horizontal scaling supported when backed by shared storage.
 
 ---
 
@@ -21,7 +21,7 @@ The core functionality is stable, and OCI conformance is actively being validate
 
 - ✅ Completed:
   - Core push/pull
-  - RBAC, and Auth models.
+  - RBAC and Auth models.
   - Pull-through cache.
 - 📆 Upcoming:
   - Garbage collection of unused blobs.
@@ -34,45 +34,18 @@ Pull requests are welcome.
 
 ## 🏁 Quick Start
 
-### 1. Secure Your Credentials
+### 1. Launch the registry
 
-Generate a secure password hash for your YAML configuration:
-
-```sh
-simple-registry genhash > ./admin-password.txt
-```
-
-### 2. Launch the registry
-
-Run the registry with a data directory and administrative credentials:
+You can run a registry listening on HTTP with a data directory and
+administrative credentials for testing purpose:
 
 ```sh
 simple-registry serve \
   -datadir ./data \
-  -adminname admin \
-  -adminpwdfile ./admin-password.txt \
-  -addr 0.0.0.0:5000
+  -adminpwd secret
 ```
 
-> **ℹ️ Note:** For production, use the `-cert` and `-key` flags to listen on `https://`.
-
-```sh
-# Generate a self-signed TLS certificate for testing purposes.
-openssl req -new -x509 \
-    -keyout tls.key \
-    -out tls.crt \
-    -days 36500 \
-    -nodes -subj "/C=SE/ST=ES/L=Sevilla/O=ACME/CN=localhost"
-
-simple-registry serve \
-  -datadir /var/lib/registry \
-  -adminname admin \
-  -adminpwdfile ./admin-password.txt \
-  -cert tls.crt \
-  -key tls.key
-```
-
-### 3. Usage Example
+### 2. Usage Example
 
 ```sh
 # Login to your new registry
@@ -81,6 +54,45 @@ docker login localhost:5000
 # Tag and push an image
 docker tag busybox localhost:5000/library/busybox
 docker push localhost:5000/library/busybox
+```
+
+---
+
+## 🐳 Launch as a Container
+
+To launch the registry as a container, you can use the following command:
+
+```sh
+# Generate a admin hashed password.
+#
+# Note the space before `echo`. This is necessary to prevent to save the
+# password in your shell history.
+ echo -n "secret" | docker run \
+  -i --rm \
+  docker.io/jlsalvador/simple-registry:latest \
+    genhash > admin-password.txt
+
+# Create a volume with the proper permissions for nonroot.
+#
+# User & group ID available here:
+# https://github.com/GoogleContainerTools/distroless/blob/main/common/variables.bzl#L17
+docker run --rm \
+  -v simple-registry:/data \
+  --user root \
+  docker.io/library/busybox \
+    chown -R 65532:65534 /data
+
+docker run \
+  -d \
+  --restart on-failure \
+  --name simple-registry \
+  -p 5000:5000 \
+  -v simple-registry:/data \
+  -v $(pwd)/admin-password.txt:/pwd.txt:ro \
+  docker.io/jlsalvador/simple-registry:latest \
+    serve \
+    -adminpwdfile /pwd.txt \
+    -datadir /data
 ```
 
 ---
@@ -106,7 +118,11 @@ simple-registry serve \
   -cfgdir ./proxies
 ```
 
-> **ℹ️ Note:** There are some manifests examples in [docs/examples](docs/examples)
+Please, read the [docs](docs) to learn more about the configuration files and
+their syntax.
+
+> **ℹ️ Note:**
+> There are some manifests examples in [docs/examples](docs/examples)
 
 ---
 
@@ -117,7 +133,7 @@ You can define, using regular expressions, which users and groups have access to
 Simple Registry evaluates requests in three tiers:
 
 1. **Anonymous:** Mix public/private repositories.
-2. **Basic Auth:** Defines users and groups for basic authentication. Hash password by bcrypt.
+2. **Basic Auth:** Defines users and groups for basic authentication. Passwords are hashed using bcrypt.
 3. **Bearer Token:** Supports issued tokens with built-in expiration validation.
 
 ---
