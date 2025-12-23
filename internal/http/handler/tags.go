@@ -20,8 +20,8 @@ import (
 	"io/fs"
 	netHttp "net/http"
 	"slices"
-	"strconv"
 
+	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -90,42 +90,7 @@ func (m *ServeMux) TagsList(
 
 	slices.Sort(tags)
 
-	// "last" is an optional parameter.
-	// If it's provided, remove all tags BEFORE and INCLUDING it.
-	last := r.URL.Query().Get("last")
-	if last != "" {
-		// Find the index of "last".
-		foundIndex := -1
-		for i, v := range tags {
-			if v == last {
-				foundIndex = i
-				break
-			}
-		}
-
-		// If "last" was found, start the slice AFTER it.
-		if foundIndex != -1 {
-			// Remove values from tags up to and including "last".
-			tags = tags[foundIndex+1:]
-		}
-	}
-
-	// "n" is an optional parameter.
-	// If it's provided, limit the number of tags returned.
-	n := r.URL.Query().Get("n")
-	if n != "" {
-		nInt, err := strconv.ParseInt(n, 10, 64)
-		if err != nil {
-			w.WriteHeader(netHttp.StatusBadRequest)
-			return
-		}
-		// Limit the number of tags returned.
-		if nInt < 0 || nInt > int64(len(tags)) {
-			w.WriteHeader(netHttp.StatusBadRequest)
-			return
-		}
-		tags = tags[:nInt]
-	}
+	tags = http.PaginateString(tags, r)
 
 	response := map[string]any{
 		"name": repo,
