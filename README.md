@@ -76,7 +76,7 @@ To launch the registry as a container, you can use the following command:
 
 # Create a volume with the proper permissions for nonroot.
 #
-# User & group ID available here:
+# The User & group ID was obtained from:
 # https://github.com/GoogleContainerTools/distroless/blob/main/common/variables.bzl#L17
 docker run --rm \
   -v simple-registry:/data \
