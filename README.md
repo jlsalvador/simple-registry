@@ -49,6 +49,8 @@ simple-registry serve \
 
 ```sh
 # Login to your new registry
+# Username: admin
+# Password: secret
 docker login localhost:5000
 
 # Tag and push an image
