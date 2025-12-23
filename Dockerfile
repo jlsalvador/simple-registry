@@ -33,5 +33,4 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/app /app
 
-USER 65532:65532
 ENTRYPOINT ["/app"]
