@@ -173,12 +173,10 @@ func (m *ServeMux) BlobsUploadsPost(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	// Case 1. Mount blob from other repository.
@@ -249,12 +247,10 @@ func (m *ServeMux) BlobsUploadsGet(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
@@ -325,12 +321,10 @@ func (m *ServeMux) BlobsUploadsPatch(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
@@ -436,12 +430,10 @@ func (m *ServeMux) BlobsUploadsPut(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPut) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	if r.Header.Get("Content-Type") == "application/octet-stream" && r.Header.Get("Content-Length") != "" {
@@ -530,12 +522,10 @@ func (m *ServeMux) BlobsUploadsDelete(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	if err := m.cfg.Data.BlobsUploadCancel(repo, uuid); err != nil {

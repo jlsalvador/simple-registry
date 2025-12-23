@@ -85,12 +85,10 @@ func (m *ServeMux) ManifestsGet(
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	// Get the manifest blob from the data storage.
@@ -176,12 +174,10 @@ func (m *ServeMux) ManifestsPut(
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodPut) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	// Store manifest.
@@ -275,12 +271,10 @@ func (m *ServeMux) ManifestsDelete(
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	if err := m.cfg.Data.ManifestDelete(repo, reference); err != nil {

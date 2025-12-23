@@ -44,12 +44,10 @@ func (m *ServeMux) Index(
 	if !m.cfg.Rbac.IsAllowed(username, "", "", netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	w.WriteHeader(netHttp.StatusOK)
@@ -79,12 +77,10 @@ func (m *ServeMux) CatalogList(
 	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	// Fetch repositories from storage.

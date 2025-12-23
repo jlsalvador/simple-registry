@@ -64,12 +64,10 @@ func (m *ServeMux) TagsList(
 	if !m.cfg.Rbac.IsAllowed(username, "tags", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	tags, err := m.cfg.Data.TagsList(repo)

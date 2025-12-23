@@ -38,12 +38,10 @@ func (m *ServeMux) ReferrersGet(
 	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst)

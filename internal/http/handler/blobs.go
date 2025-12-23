@@ -69,12 +69,10 @@ func (m *ServeMux) BlobsGet(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodGet) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	blob, size, err := m.cfg.Data.BlobsGet(repo, digest)
@@ -140,12 +138,10 @@ func (m *ServeMux) BlobsDelete(
 	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
 		if username == rbac.AnonymousUsername {
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
-		} else {
-			w.WriteHeader(netHttp.StatusUnauthorized)
-			return
 		}
+
+		w.WriteHeader(netHttp.StatusUnauthorized)
+		return
 	}
 
 	err = m.cfg.Data.BlobsDelete(repo, digest)
