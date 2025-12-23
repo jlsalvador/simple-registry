@@ -22,9 +22,9 @@ func CmdFn() error {
 	if isPiped() {
 		pwd, err = os.ReadFile(os.Stdin.Name())
 	} else {
-		fmt.Print("Enter password (no echo): ")
+		fmt.Fprint(os.Stderr, "Enter password (no echo): ")
 		pwd, err = term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Print("\n\n")
+		fmt.Fprintln(os.Stderr, "")
 	}
 	if err != nil {
 		return fmt.Errorf("failed to read from stdin: %w", err)
@@ -34,7 +34,7 @@ func CmdFn() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Hash:\n%s\n", hash)
+	fmt.Fprintf(os.Stdout, "%s\n", hash)
 
 	return nil
 }
