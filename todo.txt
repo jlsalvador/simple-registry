@@ -11,6 +11,7 @@ x (B) 2025-12-21 2025-12-17 pull through +cache as a mirror. @todo
 x (C) 2025-12-21 2025-12-21 pull through +cache refresh from upstream. @todo
 x (B) 2025-12-22 2025-12-21 pull through +cache pwd file support. @todo
 x (D) 2025-12-23 2025-12-23 replace digest.Parse() by regexp when it is possible. @todo
+x (D) 2025-12-23 2025-12-22 +catalog pagination. @todo
 (A) 2025-12-23 implement +ocispec filtering by artifact-type. @todo
 (B) 2025-12-23 compile rbac scopes regexp. @todo
 (B) 2025-12-17 +gc on demand. @todo
@@ -23,4 +24,3 @@ x (D) 2025-12-23 2025-12-23 replace digest.Parse() by regexp when it is possible
 2025-12-17 web ui for admin. +admin @whish
 2025-12-17 reload +yaml on demand. @whish
 2025-12-17 auto reload +yaml. @whish
-2025-12-22 +catalog pagination. @whish
