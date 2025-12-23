@@ -17,7 +17,9 @@ package handler
 import (
 	"encoding/json"
 	netHttp "net/http"
+	"slices"
 
+	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
@@ -89,6 +91,10 @@ func (m *ServeMux) CatalogList(
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
+
+	slices.Sort(repos)
+
+	repos = http.PaginateString(repos, r)
 
 	response := map[string][]string{
 		"repositories": repos,
