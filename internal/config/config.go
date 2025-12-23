@@ -25,11 +25,13 @@ func New(adminName, adminPwd, adminPwdFile, dataDir string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if adminPwd != "" {
 		b, err = bcrypt.GenerateFromPassword([]byte(adminPwd), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		panic("adminpwd is empty, please use flag -adminpwd")
 	}
 	pwd := string(b)
 
