@@ -26,3 +26,10 @@ var ErrRequestedRangeNotSatisfiable = HttpError{
 var ErrInternalServerError = HttpError{
 	Status: http.StatusInternalServerError,
 }
+
+func StatusCodeFromError(err error) int {
+	if err, ok := err.(HttpError); ok {
+		return err.Status
+	}
+	return http.StatusInternalServerError
+}

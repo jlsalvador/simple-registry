@@ -22,7 +22,6 @@ import (
 	"slices"
 	"strconv"
 
-	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -49,9 +48,8 @@ func (m *ServeMux) TagsList(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 

@@ -22,7 +22,6 @@ import (
 
 	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/pkg/http"
-	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 
@@ -158,9 +157,8 @@ func (m *ServeMux) BlobsUploadsPost(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -228,9 +226,8 @@ func (m *ServeMux) BlobsUploadsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -299,15 +296,14 @@ func (m *ServeMux) BlobsUploadsPatch(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	// Validate request Content-Type header.
-	if r.Header.Get("Content-Type") != "application/octet-stream" {
-		w.WriteHeader(netHttp.StatusBadRequest)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	// Validate request Content-Type header.
+	if r.Header.Get("Content-Type") != "application/octet-stream" {
+		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
 
@@ -410,9 +406,8 @@ func (m *ServeMux) BlobsUploadsPut(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -512,9 +507,8 @@ func (m *ServeMux) BlobsUploadsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 

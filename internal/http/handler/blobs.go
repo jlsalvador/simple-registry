@@ -21,8 +21,6 @@ import (
 	"io/fs"
 	netHttp "net/http"
 
-	d "github.com/jlsalvador/simple-registry/pkg/digest"
-	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -48,9 +46,8 @@ func (m *ServeMux) BlobsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -120,9 +117,8 @@ func (m *ServeMux) BlobsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 

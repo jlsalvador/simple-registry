@@ -57,9 +57,8 @@ func (m *ServeMux) ManifestsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -148,9 +147,8 @@ func (m *ServeMux) ManifestsPut(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err, ok := err.(*httpErrors.HttpError); ok {
-		w.WriteHeader(err.Status)
+	username, err := m.authenticate(w, r)
+	if err != nil {
 		return
 	}
 
@@ -249,14 +247,8 @@ func (m *ServeMux) ManifestsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.cfg.Rbac.GetUsernameFromHttpRequest(r)
+	username, err := m.authenticate(w, r)
 	if err != nil {
-		if err, ok := err.(*httpErrors.HttpError); ok {
-			w.WriteHeader(err.Status)
-			return
-		}
-
-		w.WriteHeader(httpErrors.ErrInternalServerError.Status)
 		return
 	}
 

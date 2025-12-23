@@ -15,11 +15,13 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/http/log"
 	"github.com/jlsalvador/simple-registry/pkg/http/route"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -28,6 +30,18 @@ import (
 type ServeMux struct {
 	cfg config.Config
 	mux *http.ServeMux
+}
+
+func (m *ServeMux) authenticate(w http.ResponseWriter, r *http.Request) (username string, err error) {
+	username, err = m.cfg.Rbac.GetUsernameFromHttpRequest(r)
+	if err != nil {
+		if errors.Is(err, httpErrors.ErrUnauthorized) {
+			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
+		}
+		w.WriteHeader(httpErrors.StatusCodeFromError(err))
+		return "", err
+	}
+	return username, nil
 }
 
 // registerRoutes registers the routes for the HTTP server.
