@@ -10,7 +10,8 @@ spec:
     # # Private resources that this user has access to upstream is made available
     # # on your mirror.
     # username: your-docker-username
-    # password: your-docker-password
+    # password: your-plain-docker-password
+    # # You can store your plain password in a file
     # passwordFile: /run/secrets/dockerhub-password
     ttl: 30d
   scopes:

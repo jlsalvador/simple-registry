@@ -16,6 +16,8 @@ cached into your simple-registry.
 Create your YAML manifests as the following example:
 
 ```yaml
+# ./config/proxies.yaml
+---
 apiVersion: simple-registry.jlsalvador.online/v1beta1
 kind: PullThroughCache
 metadata:
@@ -28,7 +30,8 @@ spec:
     # # Private resources that this user has access to upstream is made available
     # # on your mirror.
     # username: your-docker-username
-    # password: your-docker-password
+    # password: your-plain-docker-password
+    # # Or you can store your plain password in a file
     # passwordFile: /run/secrets/dockerhub-password
     ttl: 30d
   scopes:
@@ -44,7 +47,7 @@ spec:
     url: https://ghcr.io/
     timeout: 60s
     username: your-github-user
-    passwordFile: /run/secrets/github-user-app-password
+    password: your-plain-github-password
     ttl: 30d
   scopes:
    - "^my-github-user/.+$"
@@ -69,4 +72,6 @@ simple-registry serve \
 
 ```sh
 docker pull localhost:5000/library/busybox
+docker pull localhost:5000/my-github-user/my-repo
+docker pull localhost:5000/my-github-user/my-another-project
 ```
