@@ -266,7 +266,7 @@ func (s *FilesystemDataStorage) ManifestsList(repo string) (digests iter.Seq[str
 					continue
 				}
 
-				digest := e.Name()
+				digest := algo.Name() + ":" + e.Name()
 				if !yield(digest) {
 					return
 				}

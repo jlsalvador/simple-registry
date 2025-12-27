@@ -22,7 +22,7 @@ import (
 type DataStorage interface {
 	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
 	BlobsDelete(repo, digest string) error
-	// BlobsList() (digests iter.Seq[string], err error)
+	BlobsList() (digests iter.Seq[string], err error)
 
 	BlobsUploadCreate(repo string) (uuid string, err error)
 	BlobsUploadCancel(repo, uuid string) error
