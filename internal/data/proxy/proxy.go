@@ -117,13 +117,13 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 
 // Referrers
 
-func (s *ProxyDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, size int64, err error) {
+func (s *ProxyDataStorage) ReferrersGet(repo, dgst, artifactType string) (r io.ReadCloser, size int64, err error) {
 	if s.ds == nil {
 		return nil, -1, ErrDataStorageNotInitialized
 	}
 
 	// Try local first.
-	r, size, err = s.ds.ReferrersGet(repo, dgst)
+	r, size, err = s.ds.ReferrersGet(repo, dgst, artifactType)
 	if err == nil {
 		return r, size, nil
 	}
@@ -138,7 +138,7 @@ func (s *ProxyDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, siz
 	}
 
 	// Fetch from upstream.
-	body, size, err := fetchReferrersFromUpstream(*proxy, repo, dgst)
+	body, size, err := fetchReferrersFromUpstream(*proxy, repo, dgst, artifactType)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -151,7 +151,7 @@ func (s *ProxyDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, siz
 	}
 
 	// Read back from local.
-	return s.ds.ReferrersGet(repo, dgst)
+	return s.ds.ReferrersGet(repo, dgst, artifactType)
 }
 
 // Tags

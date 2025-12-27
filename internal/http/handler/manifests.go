@@ -206,7 +206,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 	defer f.Close()
 
-	var manifest = &registry.Manifest{}
+	var manifest = &registry.ImageManifest{}
 	if err := json.NewDecoder(f).Decode(manifest); err != nil {
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return

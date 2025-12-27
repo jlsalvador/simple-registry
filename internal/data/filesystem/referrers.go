@@ -13,7 +13,40 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
-func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser, size int64, err error) {
+type genericManifest struct {
+	MediaType    string  `json:"mediaType"`
+	ArtifactType *string `json:"artifactType,omitempty"`
+	Config       *struct {
+		MediaType string `json:"mediaType"`
+	} `json:"config,omitempty"`
+	Annotations map[string]string `json:"annotations"`
+}
+
+func isSkipableManifest(artifactType string, blobManifest genericManifest) bool {
+	if artifactType == "" {
+		return false
+	}
+
+	if blobManifest.ArtifactType != nil {
+		// Modern artifact
+		if *blobManifest.ArtifactType != artifactType {
+			return true
+		}
+	} else {
+		// Legacy artifact
+		if blobManifest.MediaType != "application/vnd.oci.image.manifest.v1+json" {
+			return true
+		}
+
+		if blobManifest.Config == nil || blobManifest.Config.MediaType != artifactType {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *FilesystemDataStorage) ReferrersGet(repo, dgst, artifactType string) (r io.ReadCloser, size int64, err error) {
 	algo, hash, err := digest.Parse(dgst)
 	if err != nil {
 		return nil, -1, err
@@ -35,14 +68,7 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 		}
 	}
 
-	type descriptor struct {
-		MediaType   string `json:"mediaType"`
-		Digest      string `json:"digest"`
-		Size        int64  `json:"size"`
-		Annotations map[string]string
-	}
-
-	manifests := []descriptor{}
+	index := registry.NewImageIndexManifest()
 
 	for _, e := range entries {
 		referrerDigest := e.Name()
@@ -63,23 +89,23 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst string) (r io.ReadCloser
 		}
 		defer blob.Close()
 
-		manifest := &registry.Manifest{}
-		if err := json.NewDecoder(blob).Decode(manifest); err != nil {
+		// Blob manifest with legacy support.
+		blobManifest := genericManifest{}
+
+		if err := json.NewDecoder(blob).Decode(&blobManifest); err != nil {
 			continue
 		}
 
-		manifests = append(manifests, descriptor{
-			MediaType:   manifest.MediaType,
+		if isSkipableManifest(artifactType, blobManifest) {
+			continue
+		}
+
+		index.Manifests = append(index.Manifests, registry.DescriptorManifest{
+			MediaType:   blobManifest.MediaType,
 			Digest:      referrerDigest,
 			Size:        fi.Size(),
-			Annotations: manifest.Annotations,
+			Annotations: blobManifest.Annotations,
 		})
-	}
-
-	index := map[string]any{
-		"schemaVersion": 2,
-		"mediaType":     "application/vnd.oci.image.index.v1+json",
-		"manifests":     manifests,
 	}
 
 	data, err := json.Marshal(index)

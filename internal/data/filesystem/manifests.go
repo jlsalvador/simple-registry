@@ -33,7 +33,7 @@ const manifestAlgo = "sha256"
 
 // indexReferrer verifies if the manifest has a subject, if it so, create the refferers.
 func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manifestBytes []byte) error {
-	var manifest registry.Manifest
+	var manifest registry.ImageManifest
 
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		return nil // Ignore invalid OCI 1.1.

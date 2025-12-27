@@ -44,7 +44,9 @@ func (m *ServeMux) ReferrersGet(
 		return
 	}
 
-	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst)
+	artifactType := r.URL.Query().Get("artifactType")
+
+	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst, artifactType)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
@@ -56,6 +58,9 @@ func (m *ServeMux) ReferrersGet(
 	defer f.Close()
 
 	header := w.Header()
+	if artifactType != "" {
+		header.Set("OCI-Filters-Applied", "artifactType")
+	}
 	header.Set("Content-Type", "application/vnd.oci.image.index.v1+json")
 	header.Set("Content-Length", fmt.Sprint(size))
 	w.WriteHeader(netHttp.StatusOK)

@@ -34,5 +34,5 @@ type DataStorage interface {
 
 	RepositoriesList() ([]string, error)
 
-	ReferrersGet(repo, digest string) (r io.ReadCloser, size int64, err error)
+	ReferrersGet(repo, digest, artifactType string) (r io.ReadCloser, size int64, err error)
 }

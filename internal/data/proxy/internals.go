@@ -209,8 +209,9 @@ func fetchTagsFromUpstream(
 
 func fetchReferrersFromUpstream(
 	proxy Proxy,
-	repo string,
-	dgst string,
+	repo,
+	dgst,
+	artifactType string,
 ) (io.ReadCloser, int64, error) {
 	url := fmt.Sprintf(
 		"%s/v2/%s/referrers/%s",
@@ -224,6 +225,13 @@ func fetchReferrersFromUpstream(
 
 	if proxy.Username != "" {
 		req.SetBasicAuth(proxy.Username, proxy.Password)
+	}
+
+	// Optionally filter by artifactType.
+	if artifactType != "" {
+		q := req.URL.Query()
+		q.Set("artifactType", artifactType)
+		req.URL.RawQuery = q.Encode()
 	}
 
 	resp, err := doUpstreamRequest(&proxy, req)
