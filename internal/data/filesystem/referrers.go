@@ -72,10 +72,6 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst, artifactType string) (r
 
 	for _, e := range entries {
 		referrerDigest := e.Name()
-		fi, err := e.Info()
-		if err != nil {
-			continue
-		}
 
 		referrerAlgo, referrerHash, err := digest.Parse(referrerDigest)
 		if err != nil {
@@ -89,9 +85,16 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst, artifactType string) (r
 		}
 		defer blob.Close()
 
+		// Get blob size.
+		var size int64
+		if fi, err := blob.Stat(); err != nil {
+			continue
+		} else {
+			size = fi.Size()
+		}
+
 		// Blob manifest with legacy support.
 		blobManifest := genericManifest{}
-
 		if err := json.NewDecoder(blob).Decode(&blobManifest); err != nil {
 			continue
 		}
@@ -103,7 +106,7 @@ func (s *FilesystemDataStorage) ReferrersGet(repo, dgst, artifactType string) (r
 		index.Manifests = append(index.Manifests, registry.DescriptorManifest{
 			MediaType:   blobManifest.MediaType,
 			Digest:      referrerDigest,
-			Size:        fi.Size(),
+			Size:        size,
 			Annotations: blobManifest.Annotations,
 		})
 	}
