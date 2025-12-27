@@ -25,6 +25,7 @@ type DataStorage interface {
 	// `repo` is the name of the repository, and could be empty.
 	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
 	BlobsDelete(repo, digest string) error
+	// BlobsList() (digests iter.Seq[string], err error)
 
 	BlobsUploadCreate(repo string) (uuid string, err error)
 	BlobsUploadCancel(repo, uuid string) error
@@ -35,6 +36,7 @@ type DataStorage interface {
 	ManifestPut(repo, reference string, r io.Reader) (digest string, err error)
 	ManifestGet(repo, reference string) (r io.ReadCloser, size int64, digest string, err error)
 	ManifestDelete(repo, reference string) error
+	ManifestsList(repo string) (digests iter.Seq[string], err error)
 
 	TagsList(repo string) ([]string, error)
 
