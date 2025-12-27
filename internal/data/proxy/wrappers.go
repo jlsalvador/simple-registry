@@ -1,6 +1,9 @@
 package proxy
 
-import "io"
+import (
+	"io"
+	"iter"
+)
 
 // Blobs upload
 
@@ -65,6 +68,13 @@ func (s *ProxyDataStorage) ManifestDelete(repo, reference string) error {
 	}
 
 	return s.ds.ManifestDelete(repo, reference)
+}
+func (s *ProxyDataStorage) ManifestsList(repo string) (digests iter.Seq[string], err error) {
+	if s.ds == nil {
+		return nil, ErrDataStorageNotInitialized
+	}
+
+	return s.ds.ManifestsList(repo)
 }
 
 // Repositories

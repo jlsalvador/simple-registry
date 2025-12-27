@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
 
@@ -257,4 +258,72 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	//TODO: Garbage collection of unused revisions and tags.
 
 	return nil
+}
+
+func (s *FilesystemDataStorage) ManifestsList(repo string) (digests iter.Seq[string], err error) {
+	repoPath := filepath.Join(
+		s.base,
+		"repositories",
+		repo,
+		"_manifests",
+	)
+
+	return func(yield func(string) bool) {
+		// 1. Revisions
+		revisions := filepath.Join(repoPath, "revisions")
+		algos, _ := os.ReadDir(revisions)
+
+		for _, algo := range algos {
+			if !algo.IsDir() {
+				continue
+			}
+
+			dir := filepath.Join(revisions, algo.Name())
+			entries, _ := os.ReadDir(dir)
+
+			for _, e := range entries {
+				if !e.IsDir() {
+					continue
+				}
+
+				digest := e.Name()
+				if !yield(digest) {
+					return
+				}
+			}
+		}
+
+		// 2. Referrers
+		referrers := filepath.Join(repoPath, "referrers")
+		algos, _ = os.ReadDir(referrers)
+
+		for _, algo := range algos {
+			if !algo.IsDir() {
+				continue
+			}
+
+			algoDir := filepath.Join(referrers, algo.Name())
+			subjects, _ := os.ReadDir(algoDir)
+
+			for _, subj := range subjects {
+				if !subj.IsDir() {
+					continue
+				}
+
+				subjDir := filepath.Join(algoDir, subj.Name())
+				refs, _ := os.ReadDir(subjDir)
+
+				for _, ref := range refs {
+					if !ref.IsDir() {
+						continue
+					}
+
+					digest := ref.Name()
+					if !yield(digest) {
+						return
+					}
+				}
+			}
+		}
+	}, nil
 }
