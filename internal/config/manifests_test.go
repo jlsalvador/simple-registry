@@ -24,7 +24,7 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
-func TestParseYAML_FullCoverage(t *testing.T) {
+func TestParseYAML_Valid(t *testing.T) {
 
 	t.Run("parse all supported kinds", func(t *testing.T) {
 		t.Parallel()
@@ -97,7 +97,9 @@ spec:
 			t.Fatalf("rolebinding not parsed")
 		}
 	})
+}
 
+func TestParseYAML_Invalid(t *testing.T) {
 	t.Run("invalid YAML", func(t *testing.T) {
 		t.Parallel()
 
@@ -135,6 +137,33 @@ spec:
 		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
 		if !errors.Is(err, rbac.ErrInvalidVerb) {
 			t.Fatalf("expected rbac.ErrInvalidVerb error: %v", err)
+		}
+	})
+
+	t.Run("invalid regexp", func(t *testing.T) {
+		t.Parallel()
+
+		data := `
+apiVersion: ` + config.ApiVersion + `
+kind: RoleBinding
+metadata:
+  name: admins-binding
+spec:
+  subjects:
+    - kind: Group
+      name: admins
+  roleRef:
+    name: admins
+  scopes: ["[invalid"]
+`
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		if err == nil {
+			t.Fatalf("expected regexp error")
 		}
 	})
 }

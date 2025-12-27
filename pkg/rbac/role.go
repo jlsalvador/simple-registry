@@ -14,6 +14,8 @@
 
 package rbac
 
+import "regexp"
+
 type Role struct {
 	Name      string
 	Resources []string
@@ -29,5 +31,5 @@ type RoleBinding struct {
 	Name     string
 	Subjects []Subject
 	RoleName string
-	Scopes   []string
+	Scopes   []regexp.Regexp
 }

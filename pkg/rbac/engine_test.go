@@ -16,6 +16,7 @@ package rbac_test
 
 import (
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
@@ -45,7 +46,7 @@ func baseEngine(t *testing.T) rbac.Engine {
 				Name:     "allow-admin",
 				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
 				RoleName: "admins",
-				Scopes:   []string{"^.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		},
 	}
@@ -68,7 +69,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 				Name:     "invalid-role",
 				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
 				RoleName: "missing",
-				Scopes:   []string{"^.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		}
 
@@ -84,23 +85,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 				Name:     "wrong-subject",
 				Subjects: []rbac.Subject{{Kind: "User", Name: "someone"}},
 				RoleName: "admins",
-				Scopes:   []string{"^.*$"},
-			},
-		}
-
-		if engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodGet) {
-			t.Fatal("expected access denied")
-		}
-	})
-
-	t.Run("scope regex invalid", func(t *testing.T) {
-		engine := baseEngine(t)
-		engine.RoleBindings = []rbac.RoleBinding{
-			{
-				Name:     "invalid-regex",
-				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
-				RoleName: "admins",
-				Scopes:   []string{"[invalid"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		}
 
@@ -116,7 +101,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 				Name:     "scope-no-match",
 				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
 				RoleName: "admins",
-				Scopes:   []string{"^private/.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^private/.*$")},
 			},
 		}
 
@@ -142,7 +127,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 				Name:     "resource-mismatch",
 				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
 				RoleName: "limited",
-				Scopes:   []string{"^.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		}
 
@@ -168,7 +153,7 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 				Name:     "verb-mismatch",
 				Subjects: []rbac.Subject{{Kind: "Group", Name: "admins"}},
 				RoleName: "limited",
-				Scopes:   []string{"^.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		}
 

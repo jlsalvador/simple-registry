@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/data/proxy"
@@ -139,12 +140,22 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 				})
 			}
 
-			roleBindings = append(roleBindings, rbac.RoleBinding{
+			rb := rbac.RoleBinding{
 				Name:     m.Metadata.Name,
 				RoleName: m.Spec.RoleRef.Name,
 				Subjects: subjects,
-				Scopes:   m.Spec.Scopes,
-			})
+			}
+
+			for _, s := range m.Spec.Scopes {
+				var re *regexp.Regexp
+				re, err = regexp.Compile(s)
+				if err != nil {
+					return
+				}
+				rb.Scopes = append(rb.Scopes, *re)
+			}
+
+			roleBindings = append(roleBindings, rb)
 		}
 	}
 

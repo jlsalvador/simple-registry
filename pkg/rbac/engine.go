@@ -53,9 +53,8 @@ func (e *Engine) IsAllowed(username string, resource string, scope string, verb 
 		}
 
 		// Match scopes.
-		if i := slices.IndexFunc(rb.Scopes, func(s string) bool {
-			re, err := regexp.Compile(s)
-			return err == nil && re.MatchString(scope)
+		if i := slices.IndexFunc(rb.Scopes, func(re regexp.Regexp) bool {
+			return re.MatchString(scope)
 		}); i < 0 {
 			continue
 		}

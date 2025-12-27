@@ -3,6 +3,7 @@ package config
 import (
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
@@ -94,7 +95,7 @@ func New(adminName, adminPwd, adminPwdFile, dataDir string) (*Config, error) {
 					},
 				},
 				RoleName: "write",
-				Scopes:   []string{"^.*$"},
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
 		},
 	}
