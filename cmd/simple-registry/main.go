@@ -20,6 +20,7 @@ import (
 	"os"
 	"slices"
 
+	cmdGarbageCollect "github.com/jlsalvador/simple-registry/internal/cmd/garbage_collect"
 	cmdGenHash "github.com/jlsalvador/simple-registry/internal/cmd/generate_hash"
 	cmdServe "github.com/jlsalvador/simple-registry/internal/cmd/serve"
 	cmdVersion "github.com/jlsalvador/simple-registry/internal/cmd/version"
@@ -30,6 +31,7 @@ import (
 var cmds = []cliCmd.Cmd{
 	{Name: cmdGenHash.CmdName, Help: cmdGenHash.CmdHelp, Fn: cmdGenHash.CmdFn},
 	{Name: cmdServe.CmdName, Help: cmdServe.CmdHelp, Fn: cmdServe.CmdFn},
+	{Name: cmdGarbageCollect.CmdName, Help: cmdGarbageCollect.CmdHelp, Fn: cmdGarbageCollect.CmdFn},
 	{Name: cmdVersion.CmdName, Help: cmdVersion.CmdHelp, Fn: cmdVersion.CmdFn},
 }
 
