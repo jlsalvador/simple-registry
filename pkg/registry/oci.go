@@ -1,5 +1,10 @@
 package registry
 
+const MediaTypeOCIImageManifest = "application/vnd.oci.image.manifest.v1+json"
+const MediaTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
+const MediaTypeOCIImageIndex = "application/vnd.oci.image.index.v1+json"
+const MediaTypeDockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
+
 type DescriptorManifest struct {
 	// This REQUIRED property contains the media type of the referenced content.
 	// Values MUST comply with RFC 6838, including the naming requirements in

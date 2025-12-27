@@ -17,6 +17,7 @@ package filesystem
 import (
 	"fmt"
 	"io"
+	"iter"
 	"os"
 	"path/filepath"
 
@@ -101,4 +102,43 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 	//TODO: Garbage collect unused blobs
 
 	return nil
+}
+
+func (s *FilesystemDataStorage) BlobsList() (digests iter.Seq[string], err error) {
+	blobsDir := filepath.Join(
+		s.base,
+		"blobs",
+	)
+
+	return func(yield func(string) bool) {
+		algos, _ := os.ReadDir(blobsDir)
+		for _, algo := range algos {
+			if !algo.IsDir() {
+				continue
+			}
+
+			dir := filepath.Join(blobsDir, algo.Name())
+			hashPrefixes, _ := os.ReadDir(dir)
+
+			for _, hashPrefix := range hashPrefixes {
+				if !hashPrefix.IsDir() {
+					continue
+				}
+
+				dir := filepath.Join(blobsDir, algo.Name(), hashPrefix.Name())
+				dgsts, _ := os.ReadDir(dir)
+
+				for _, e := range dgsts {
+					if e.IsDir() {
+						continue
+					}
+
+					digest := algo.Name() + ":" + e.Name()
+					if !yield(digest) {
+						return
+					}
+				}
+			}
+		}
+	}, nil
 }
