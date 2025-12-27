@@ -52,6 +52,13 @@ func (s *ProxyDataStorage) BlobsDelete(repo, digest string) error {
 
 	return s.ds.BlobsDelete(repo, digest)
 }
+func (s *ProxyDataStorage) BlobsList() (digests iter.Seq[string], err error) {
+	if s.ds == nil {
+		return nil, ErrDataStorageNotInitialized
+	}
+
+	return s.ds.BlobsList()
+}
 
 // Manifests
 
