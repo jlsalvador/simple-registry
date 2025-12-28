@@ -3,6 +3,7 @@ package proxy
 import (
 	"io"
 	"iter"
+	"time"
 )
 
 // Blobs upload
@@ -58,6 +59,13 @@ func (s *ProxyDataStorage) BlobsList() (digests iter.Seq[string], err error) {
 	}
 
 	return s.ds.BlobsList()
+}
+func (s *ProxyDataStorage) BlobLastAccess(digest string) (lastAccess time.Time, err error) {
+	if s.ds == nil {
+		return time.Now(), ErrDataStorageNotInitialized
+	}
+
+	return s.ds.BlobLastAccess(digest)
 }
 
 // Manifests

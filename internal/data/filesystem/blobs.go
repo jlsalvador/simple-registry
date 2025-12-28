@@ -15,11 +15,14 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"iter"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 )
@@ -141,4 +144,29 @@ func (s *FilesystemDataStorage) BlobsList() (digests iter.Seq[string], err error
 			}
 		}
 	}, nil
+}
+
+func (s *FilesystemDataStorage) BlobLastAccess(digest string) (lastAccess time.Time, err error) {
+	algo, hash, err := d.Parse(digest)
+	if err != nil {
+		return time.Now(), err
+	}
+
+	if len(hash) < 2 {
+		return time.Now(), ErrDigestMismatch
+	}
+
+	blobPath := filepath.Join(s.base, "blobs", algo, hash[0:2], hash)
+
+	fi, err := os.Stat(blobPath)
+	if err != nil {
+		return time.Now(), err
+	}
+
+	fis, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return time.Now(), errors.New("cannot fetch atime from filesystem")
+	}
+
+	return time.Unix(fis.Atim.Sec, fis.Atim.Nsec), nil
 }
