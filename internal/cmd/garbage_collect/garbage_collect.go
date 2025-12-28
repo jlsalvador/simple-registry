@@ -3,94 +3,117 @@ package garbagecollect
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
+	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
-func getReferrencedBlobs(cfg config.Config) ([]string, error) {
-	refBlobs := []string{}
+func markManifest(
+	cfg config.Config,
+	repo string,
+	digest string,
+	seenManifests digestSet,
+	seenBlobs digestSet,
+) error {
+	if seenManifests.has(digest) {
+		return nil
+	}
+	seenManifests.add(digest)
 
-	//FIXME: needs to load children manifests too!
-
-	repositories, err := cfg.Data.RepositoriesList()
+	r, _, _, err := cfg.Data.ManifestGet(repo, digest)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	defer r.Close()
+
+	var raw map[string]any
+	if err := json.NewDecoder(r).Decode(&raw); err != nil {
+		return err
 	}
 
-	for _, repo := range repositories {
+	mediaType, _ := raw["mediaType"].(string)
+
+	switch mediaType {
+
+	case registry.MediaTypeOCIImageManifest,
+		registry.MediaTypeDockerImageManifest:
+
+		data, err := json.Marshal(raw)
+		if err != nil {
+			return err
+		}
+
+		var manifest registry.ImageManifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			return err
+		}
+
+		for _, layer := range manifest.Layers {
+			seenBlobs.add(layer.Digest)
+		}
+
+	case registry.MediaTypeOCIImageIndex,
+		registry.MediaTypeDockerManifestList:
+
+		data, err := json.Marshal(raw)
+		if err != nil {
+			return err
+		}
+
+		var index registry.ImageIndexManifest
+		if err := json.Unmarshal(data, &index); err != nil {
+			return err
+		}
+
+		for _, m := range index.Manifests {
+			if err := markManifest(cfg, repo, m.Digest, seenManifests, seenBlobs); err != nil {
+				return err
+			}
+		}
+
+	default:
+		return fmt.Errorf("unsupported media type: %s", mediaType)
+	}
+
+	return nil
+}
+
+func collectReferencedBlobs(cfg config.Config) (
+	seenBlobs digestSet,
+	seenManifests digestSet,
+	err error,
+) {
+	seenManifests = newDigestSet()
+	seenBlobs = newDigestSet()
+
+	repos, err := cfg.Data.RepositoriesList()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, repo := range repos {
 		manifests, err := cfg.Data.ManifestsList(repo)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		for digest := range manifests {
-			r, _, _, err := cfg.Data.ManifestGet(repo, digest)
-			if err != nil {
-				return nil, err
+			if err := markManifest(cfg, repo, digest, seenManifests, seenBlobs); err != nil {
+				return nil, nil, err
 			}
-			defer r.Close()
-
-			header := &struct {
-				MediaType string `json:"mediaType"`
-			}{}
-			if err := json.NewDecoder(r).Decode(header); err != nil {
-				return nil, err
-			}
-
-			// Re-read (simplest way).
-			r2, _, _, err := cfg.Data.ManifestGet(repo, digest)
-			if err != nil {
-				return nil, err
-			}
-			defer r2.Close()
-
-			switch header.MediaType {
-			case registry.MediaTypeOCIImageManifest,
-				registry.MediaTypeDockerImageManifest:
-
-				manifest := &registry.ImageManifest{}
-				if err := json.NewDecoder(r2).Decode(manifest); err != nil {
-					return nil, err
-				}
-
-				refBlobs = append(refBlobs, manifest.Config.Digest)
-
-				for _, layer := range manifest.Layers {
-					if !slices.Contains(refBlobs, layer.Digest) {
-						refBlobs = append(refBlobs, layer.Digest)
-					}
-				}
-
-			case registry.MediaTypeOCIImageIndex,
-				registry.MediaTypeDockerManifestList:
-
-				manifest := &registry.ImageIndexManifest{}
-				if err := json.NewDecoder(r2).Decode(manifest); err != nil {
-					return nil, err
-				}
-
-				refBlobs = append(refBlobs, digest)
-
-				for _, m := range manifest.Manifests {
-					if !slices.Contains(refBlobs, m.Digest) {
-						refBlobs = append(refBlobs, m.Digest)
-					}
-				}
-
-			default:
-				return nil, fmt.Errorf("unsupported media type: %s", header.MediaType)
-			}
-
 		}
 	}
 
-	return refBlobs, nil
+	return seenBlobs, seenManifests, nil
 }
 
-func garbageCollect(cfg config.Config) error {
-	refBlobs, err := getReferrencedBlobs(cfg)
+func garbageCollect(
+	cfg config.Config,
+	dryRun bool,
+	lastAccess time.Duration,
+) error {
+	usedBlobs, usedManifests, err := collectReferencedBlobs(cfg)
 	if err != nil {
 		return err
 	}
@@ -99,9 +122,18 @@ func garbageCollect(cfg config.Config) error {
 	if err != nil {
 		return err
 	}
+
 	for blob := range blobs {
-		if !slices.Contains(refBlobs, blob) {
-			fmt.Printf("Removing unused blob: %s\n", blob)
+		blobLastAccess, err := cfg.Data.BlobLastAccess(blob)
+		if err != nil {
+			return err
+		}
+
+		if time.Since(blobLastAccess) > lastAccess && !usedBlobs.has(blob) && !usedManifests.has(blob) {
+			fmt.Printf("blob eligible for deletion: %s\n", blob)
+			if !dryRun {
+				//TODO: DeleteBlob(blob)
+			}
 		}
 	}
 

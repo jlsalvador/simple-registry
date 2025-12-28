@@ -17,6 +17,7 @@ package data
 import (
 	"io"
 	"iter"
+	"time"
 )
 
 type DataStorage interface {
@@ -26,6 +27,7 @@ type DataStorage interface {
 	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
 	BlobsDelete(repo, digest string) error
 	BlobsList() (digests iter.Seq[string], err error)
+	BlobLastAccess(digest string) (lastAccess time.Time, err error)
 
 	BlobsUploadCreate(repo string) (uuid string, err error)
 	BlobsUploadCancel(repo, uuid string) error

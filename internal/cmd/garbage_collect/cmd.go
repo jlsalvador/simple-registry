@@ -26,5 +26,9 @@ func CmdFn() error {
 		)
 	}
 
-	return garbageCollect(*cfg)
+	return garbageCollect(
+		*cfg,
+		flags.DryRun,
+		flags.LastAccess,
+	)
 }
