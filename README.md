@@ -1,6 +1,7 @@
 # 📦 Simple Registry
 
-A lightweight OCI-compatible container registry with RBAC support and pull-through caching.
+A lightweight OCI-compatible container registry with RBAC support
+and pull-through caching.
 
 ---
 
@@ -8,10 +9,10 @@ A lightweight OCI-compatible container registry with RBAC support and pull-throu
 
 - **🎖️ OCI Native:** Implements the [OCI Distribution Specification v1.1.1][oci-spec].
 - **🪶 Lightweight:** Low memory footprint and minimal dependencies.
-- **🛂 Role-based Access Control (RBAC):** Granular control per repository, action, and role.
+- **🛂 Role-based Access Control (RBAC):** Per repository, action, and role.
 - **📦 Pull-through Caching:** Configurable on-demand caching from external registries.
-- **🔒 Flexible Authentication:** Anonymous access, Basic Auth, and time-bound Bearer tokens.
-- **🌀 Stateless & Scalable:** Horizontal scaling supported when backed by shared storage.
+- **🔒 Flexible Authentication:** Anonymous, Basic Auth, and tokens.
+- **🌀 Stateless & Scalable:** Horizontal scaling backed by shared storage.
 
 ---
 
@@ -26,7 +27,7 @@ The core functionality is stable, and OCI conformance is actively being validate
 - 📆 Upcoming:
   - Garbage collection of unused blobs.
   - The internal YAML configuration schema is still evolving and may change in
-    backward-incompatible ways before v1.0.
+    backward-incompatible ways prior to v1.0.
 
 Pull requests are welcome.
 
@@ -37,7 +38,7 @@ Pull requests are welcome.
 ### 1. Launch the registry
 
 You can run a registry listening on HTTP with a data directory and
-administrative credentials for testing purpose:
+administrative credentials for testing purposes:
 
 ```sh
 simple-registry serve \
@@ -65,9 +66,9 @@ docker push localhost:5000/library/busybox
 To launch the registry as a container, you can use the following command:
 
 ```sh
-# Generate a admin hashed password.
+# Generate an admin hashed password.
 #
-# Note the space before `echo`. This is necessary to prevent to save the
+# Note the space before `echo`. This is necessary to prevent saving the
 # password in your shell history.
  echo -n "secret" | docker run \
   -i --rm \
@@ -76,7 +77,7 @@ To launch the registry as a container, you can use the following command:
 
 # Create a volume with the proper permissions for nonroot.
 #
-# The User & group ID was obtained from:
+# The user & group IDs were obtained from:
 # https://github.com/GoogleContainerTools/distroless/blob/main/common/variables.bzl#L17
 docker run --rm \
   -v simple-registry:/data \
@@ -107,12 +108,12 @@ You can split your configuration into multiple files and directories using the
 
 Here are a few components that can be configured:
 
-| Component | Description                                              |
-| --------- | -------------------------------------------------------- |
-| Storage   | Defines where the blobs and manifests are stored.        |
-| Identity  | Definition of Users and Groups.                          |
-| RBAC      | Rules linking roles and role-bindings to control access. |
-| Cache     | Configuration for pull-through cache targets.            |
+| Component | Description                                   |
+| --------- | --------------------------------------------- |
+| Storage   | Defines where the blobs are stored.           |
+| Identity  | Definition of Users and Groups.               |
+| RBAC      | Rules linking roles to control access.        |
+| Cache     | Configuration for pull-through cache targets. |
 
 Example:
 
@@ -133,12 +134,14 @@ their syntax.
 
 ## 🔒 Authentication Model
 
-You can define, using regular expressions, which users and groups have access to specific repositories.
+You can define, using regular expressions, which users and groups
+have access to specific repositories.
 
 Simple Registry evaluates requests in three tiers:
 
-1. **Anonymous:** Mix public/private repositories.
-2. **Basic Auth:** Defines users and groups for basic authentication. Passwords are hashed using bcrypt.
+1. **Anonymous:** Mixes public and private repositories.
+2. **Basic Auth:** Defines users and groups for basic authentication.
+   Passwords are hashed using bcrypt.
 3. **Bearer Token:** Supports issued tokens with built-in expiration validation.
 
 ---
