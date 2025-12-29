@@ -87,24 +87,44 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 		return ErrHashShort
 	}
 
-	// Link path
-	linkPath := filepath.Join(
-		s.base,
-		"repositories",
-		repo,
-		"_layers",
-		algo,
-		hash,
-		"link",
-	)
+	if repo != "" {
+		// Repo is not empty, so only delete repo blob link.
 
-	if err := os.RemoveAll(filepath.Dir(linkPath)); err != nil {
-		return err
+		// Link path
+		linkPath := filepath.Join(
+			s.base,
+			"repositories",
+			repo,
+			"_layers",
+			algo,
+			hash,
+			"link",
+		)
+
+		if err := os.RemoveAll(filepath.Dir(linkPath)); err != nil {
+			return err
+		}
+
+		//TODO: Garbage collect unused blobs
+		return nil
+
+	} else {
+		// Repo is empty, so only delete the blob.
+
+		// Blob path
+		blobPath := filepath.Join(
+			s.base,
+			"blobs",
+			algo,
+			hash[:2],
+			hash,
+		)
+		if err := os.RemoveAll(blobPath); err != nil {
+			return err
+		}
+
+		return nil
 	}
-
-	//TODO: Garbage collect unused blobs
-
-	return nil
 }
 
 func (s *FilesystemDataStorage) BlobsList() (digests iter.Seq[string], err error) {

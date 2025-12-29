@@ -1,6 +1,7 @@
 package registry
 
 const MediaTypeOCIImageManifest = "application/vnd.oci.image.manifest.v1+json"
+const MediaTypeOCIImageConfig = "application/vnd.oci.image.config.v1+json"
 const MediaTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
 const MediaTypeOCIImageIndex = "application/vnd.oci.image.index.v1+json"
 const MediaTypeDockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"

@@ -26,9 +26,10 @@ func CmdFn() error {
 		)
 	}
 
-	return garbageCollect(
+	return GarbageCollect(
 		*cfg,
 		flags.DryRun,
 		flags.LastAccess,
+		flags.DeleteUntagged,
 	)
 }
