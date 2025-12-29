@@ -108,11 +108,67 @@ func collectReferencedBlobs(cfg config.Config) (
 	return seenBlobs, seenManifests, nil
 }
 
-func garbageCollect(
+func deleteUntaggedManifests(
+	cfg config.Config,
+	dryRun bool,
+) error {
+	repos, err := cfg.Data.RepositoriesList()
+	if err != nil {
+		return err
+	}
+
+	for _, repo := range repos {
+		seenBlobs := newDigestSet()
+		seenManifests := newDigestSet()
+
+		tags, err := cfg.Data.TagsList(repo)
+		if err != nil {
+			return err
+		}
+
+		for _, tag := range tags {
+			r, _, d, err := cfg.Data.ManifestGet(repo, tag)
+			if err != nil {
+				return err
+			}
+			r.Close()
+
+			if err := markManifest(cfg, repo, d, seenManifests, seenBlobs); err != nil {
+				return err
+			}
+		}
+
+		digests, err := cfg.Data.ManifestsList(repo)
+		if err != nil {
+			return err
+		}
+		for d := range digests {
+			if !seenManifests.has(d) {
+				fmt.Printf("manifest eligible for deletion: %s\n", d)
+				if !dryRun {
+					if err := cfg.Data.ManifestDelete(repo, d); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func GarbageCollect(
 	cfg config.Config,
 	dryRun bool,
 	lastAccess time.Duration,
+	deleteUntagged bool,
 ) error {
+	if deleteUntagged {
+		if err := deleteUntaggedManifests(cfg, dryRun); err != nil {
+			return err
+		}
+	}
+
 	usedBlobs, usedManifests, err := collectReferencedBlobs(cfg)
 	if err != nil {
 		return err
@@ -132,7 +188,9 @@ func garbageCollect(
 		if time.Since(blobLastAccess) > lastAccess && !usedBlobs.has(blob) && !usedManifests.has(blob) {
 			fmt.Printf("blob eligible for deletion: %s\n", blob)
 			if !dryRun {
-				//TODO: DeleteBlob(blob)
+				if err := cfg.Data.BlobsDelete("", blob); err != nil {
+					return err
+				}
 			}
 		}
 	}
