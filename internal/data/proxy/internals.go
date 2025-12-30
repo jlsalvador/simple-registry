@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
 func (s *ProxyDataStorage) matchProxy(repo string) *Proxy {
@@ -210,9 +213,8 @@ func fetchTagsFromUpstream(
 func fetchReferrersFromUpstream(
 	proxy Proxy,
 	repo,
-	dgst,
-	artifactType string,
-) (io.ReadCloser, int64, error) {
+	dgst string,
+) (digests iter.Seq[string], err error) {
 	url := fmt.Sprintf(
 		"%s/v2/%s/referrers/%s",
 		proxy.Url,
@@ -227,30 +229,34 @@ func fetchReferrersFromUpstream(
 		req.SetBasicAuth(proxy.Username, proxy.Password)
 	}
 
-	// Optionally filter by artifactType.
-	if artifactType != "" {
-		q := req.URL.Query()
-		q.Set("artifactType", artifactType)
-		req.URL.RawQuery = q.Encode()
-	}
-
 	resp, err := doUpstreamRequest(&proxy, req)
 	if err != nil {
-		return nil, -1, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
 		resp.Body.Close()
-		return nil, -1, fs.ErrNotExist
+		return nil, fs.ErrNotExist
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, -1, errors.Join(ErrUpstreamError, fmt.Errorf("upstream error: %s", resp.Status))
+		return nil, errors.Join(ErrUpstreamError, fmt.Errorf("upstream error: %s", resp.Status))
 	}
 
-	return resp.Body, resp.ContentLength, nil
+	index := registry.ImageIndexManifest{}
+	if err := json.NewDecoder(resp.Body).Decode(&index); err != nil {
+		return nil, err
+	}
+
+	return func(yield func(string) bool) {
+		for _, m := range index.Manifests {
+			if !yield(m.Digest) {
+				return
+			}
+		}
+	}, nil
 }
 
 func fetchManifestDigestHEAD(

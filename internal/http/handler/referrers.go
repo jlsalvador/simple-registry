@@ -1,15 +1,51 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	netHttp "net/http"
 
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
+
+type genericManifest struct {
+	MediaType    string  `json:"mediaType"`
+	ArtifactType *string `json:"artifactType,omitempty"`
+	Config       *struct {
+		MediaType string `json:"mediaType"`
+	} `json:"config,omitempty"`
+	Annotations map[string]string `json:"annotations"`
+}
+
+func isSkipableManifest(
+	filterByArtifactType string,
+	blobManifest genericManifest,
+) bool {
+	if filterByArtifactType == "" {
+		return false
+	}
+
+	if blobManifest.ArtifactType != nil {
+		// Modern artifact
+		if *blobManifest.ArtifactType != filterByArtifactType {
+			return true
+		}
+	} else {
+		// Legacy artifact
+		if blobManifest.MediaType != "application/vnd.oci.image.manifest.v1+json" {
+			return true
+		}
+
+		if blobManifest.Config == nil || blobManifest.Config.MediaType != filterByArtifactType {
+			return true
+		}
+	}
+
+	return false
+}
 
 func (m *ServeMux) ReferrersGet(
 	w netHttp.ResponseWriter,
@@ -44,9 +80,7 @@ func (m *ServeMux) ReferrersGet(
 		return
 	}
 
-	artifactType := r.URL.Query().Get("artifactType")
-
-	f, size, err := m.cfg.Data.ReferrersGet(repo, dgst, artifactType)
+	referrers, err := m.cfg.Data.ReferrersGet(repo, dgst)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
@@ -55,14 +89,45 @@ func (m *ServeMux) ReferrersGet(
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
-	defer f.Close()
+
+	filterByArtifactType := r.URL.Query().Get("artifactType")
+
+	index := registry.NewImageIndexManifest()
+	for ref := range referrers {
+		blob, size, err := m.cfg.Data.BlobsGet(repo, ref)
+		if err != nil {
+			w.WriteHeader(netHttp.StatusInternalServerError)
+			return
+		}
+		defer blob.Close()
+
+		blobManifest := genericManifest{}
+		if err := json.NewDecoder(blob).Decode(&blobManifest); err != nil {
+			continue
+		}
+
+		if !isSkipableManifest(filterByArtifactType, blobManifest) {
+			index.Manifests = append(index.Manifests, registry.DescriptorManifest{
+				MediaType:   blobManifest.MediaType,
+				Digest:      ref,
+				Size:        size,
+				Annotations: blobManifest.Annotations,
+			})
+		}
+	}
+
+	data, err := json.Marshal(index)
+	if err != nil {
+		w.WriteHeader(netHttp.StatusInternalServerError)
+		return
+	}
 
 	header := w.Header()
-	if artifactType != "" {
+	if filterByArtifactType != "" {
 		header.Set("OCI-Filters-Applied", "artifactType")
 	}
 	header.Set("Content-Type", "application/vnd.oci.image.index.v1+json")
-	header.Set("Content-Length", fmt.Sprint(size))
+	header.Set("Content-Length", fmt.Sprint(len(data)))
 	w.WriteHeader(netHttp.StatusOK)
-	_, _ = io.Copy(w, f)
+	w.Write(data)
 }

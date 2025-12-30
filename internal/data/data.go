@@ -14,7 +14,10 @@
 
 package data
 
-import "io"
+import (
+	"io"
+	"iter"
+)
 
 type DataStorage interface {
 	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
@@ -34,5 +37,10 @@ type DataStorage interface {
 
 	RepositoriesList() ([]string, error)
 
-	ReferrersGet(repo, digest, artifactType string) (r io.ReadCloser, size int64, err error)
+	// ReferrersGet returns an iter of referrer digests for the given manifest
+	// digest.
+	ReferrersGet(
+		repo,
+		manifestDigest string,
+	) (digests iter.Seq[string], err error)
 }

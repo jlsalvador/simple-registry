@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"iter"
 
 	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -117,41 +118,36 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 
 // Referrers
 
-func (s *ProxyDataStorage) ReferrersGet(repo, dgst, artifactType string) (r io.ReadCloser, size int64, err error) {
+func (s *ProxyDataStorage) ReferrersGet(
+	repo,
+	dgst string,
+) (digests iter.Seq[string], err error) {
 	if s.ds == nil {
-		return nil, -1, ErrDataStorageNotInitialized
+		return nil, ErrDataStorageNotInitialized
 	}
 
 	// Try local first.
-	r, size, err = s.ds.ReferrersGet(repo, dgst, artifactType)
+	digests, err = s.ds.ReferrersGet(repo, dgst)
 	if err == nil {
-		return r, size, nil
+		return digests, nil
 	}
 	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
-		return nil, -1, err
+		return nil, err
 	}
 
 	// Find matching proxy.
 	proxy := s.matchProxy(repo)
 	if proxy == nil {
-		return nil, -1, fs.ErrNotExist
+		return nil, fs.ErrNotExist
 	}
 
 	// Fetch from upstream.
-	body, size, err := fetchReferrersFromUpstream(*proxy, repo, dgst, artifactType)
+	digests, err = fetchReferrersFromUpstream(*proxy, repo, dgst)
 	if err != nil {
-		return nil, -1, err
-	}
-	defer body.Close()
-
-	// Store locally.
-	dgstRef := "sha256:" + dgst // referrers are indexed by subject digest
-	if _, err := s.ds.ManifestPut(repo, dgstRef, body); err != nil {
-		return nil, -1, err
+		return nil, err
 	}
 
-	// Read back from local.
-	return s.ds.ReferrersGet(repo, dgst, artifactType)
+	return digests, nil
 }
 
 // Tags
