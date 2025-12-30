@@ -161,7 +161,7 @@ func TestGarbageCollect(t *testing.T) {
 		t.Fatalf("expected %d manifests, got %d", 2*len(blobs), len(slices.Collect(manifestDigests)))
 	}
 
-	if err := garbagecollect.GarbageCollect(*cfg, false, 1, true); err != nil {
+	if _, err := garbagecollect.GarbageCollect(*cfg, false, 1, true); err != nil {
 		t.Fatal(err)
 	}
 

@@ -3,23 +3,28 @@ package garbagecollect
 import (
 	"encoding/json"
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	pkgIter "github.com/jlsalvador/simple-registry/pkg/iter"
+	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
+// markManifest marks a manifest as seen and recursively marks all manifests and
+// blobs it references.
 func markManifest(
 	cfg config.Config,
 	repo string,
 	digest string,
-	seenManifests digestSet,
-	seenBlobs digestSet,
+	seenManifests mapset.MapSet,
+	seenBlobs mapset.MapSet,
 ) error {
-	if seenManifests.has(digest) {
+	if seenManifests.Contains(digest) {
 		return nil
 	}
-	seenManifests.add(digest)
+	seenManifests.Add(digest)
 
 	r, _, _, err := cfg.Data.ManifestGet(repo, digest)
 	if err != nil {
@@ -50,7 +55,7 @@ func markManifest(
 		}
 
 		for _, layer := range manifest.Layers {
-			seenBlobs.add(layer.Digest)
+			seenBlobs.Add(layer.Digest)
 		}
 
 	case registry.MediaTypeOCIImageIndex,
@@ -76,124 +81,175 @@ func markManifest(
 		return fmt.Errorf("unsupported media type: %s", mediaType)
 	}
 
-	return nil
-}
-
-func collectReferencedBlobs(cfg config.Config) (
-	seenBlobs digestSet,
-	seenManifests digestSet,
-	err error,
-) {
-	seenManifests = newDigestSet()
-	seenBlobs = newDigestSet()
-
-	repos, err := cfg.Data.RepositoriesList()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, repo := range repos {
-		manifests, err := cfg.Data.ManifestsList(repo)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		for digest := range manifests {
-			if err := markManifest(cfg, repo, digest, seenManifests, seenBlobs); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-
-	return seenBlobs, seenManifests, nil
-}
-
-func deleteUntaggedManifests(
-	cfg config.Config,
-	dryRun bool,
-) error {
-	repos, err := cfg.Data.RepositoriesList()
+	referrers, err := cfg.Data.ReferrersGet(repo, digest)
 	if err != nil {
 		return err
 	}
-
-	for _, repo := range repos {
-		seenBlobs := newDigestSet()
-		seenManifests := newDigestSet()
-
-		tags, err := cfg.Data.TagsList(repo)
-		if err != nil {
+	for ref := range referrers {
+		if err := markManifest(cfg, repo, ref, seenManifests, seenBlobs); err != nil {
 			return err
 		}
+	}
 
-		for _, tag := range tags {
-			r, _, d, err := cfg.Data.ManifestGet(repo, tag)
+	return nil
+}
+
+// collectRootManifests returns a map of repository names to their root manifest
+// digests.
+//
+// If `deleteUntagged` is true, only root manifests that have at least one tag
+// are included.
+func collectRootManifests(
+	cfg config.Config,
+	deleteUntagged bool,
+) (map[string][]string, error) {
+	roots := map[string][]string{}
+
+	repos, err := cfg.Data.RepositoriesList()
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range repos {
+
+		if !deleteUntagged {
+			// Because we are not delete untagged manifests, include all the
+			// manifests from this repo.
+
+			manifests, err := cfg.Data.ManifestsList(repo)
 			if err != nil {
-				return err
+				return nil, err
+			}
+			for digest := range manifests {
+				roots[repo] = append(roots[repo], digest)
+			}
+			continue
+		}
+
+		// We are going to delete untagged manifests, so only include the
+		// manifests that have tags.
+		tags, err := cfg.Data.TagsList(repo)
+		if err != nil {
+			return nil, err
+		}
+		for _, tag := range tags {
+			r, _, digest, err := cfg.Data.ManifestGet(repo, tag)
+			if err != nil {
+				return nil, err
 			}
 			r.Close()
 
-			if err := markManifest(cfg, repo, d, seenManifests, seenBlobs); err != nil {
-				return err
-			}
+			roots[repo] = append(roots[repo], digest)
 		}
 
+	}
+
+	return roots, nil
+}
+
+func sweepManifests(
+	cfg config.Config,
+	seenManifests mapset.MapSet,
+	dryRun bool,
+	lastAccess time.Duration,
+) (deleted iter.Seq[string], err error) {
+	repos, err := cfg.Data.RepositoriesList()
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range repos {
 		digests, err := cfg.Data.ManifestsList(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		for d := range digests {
-			if !seenManifests.has(d) {
-				fmt.Printf("manifest eligible for deletion: %s\n", d)
+
+		for digest := range digests {
+			blobLastAccess, err := cfg.Data.BlobLastAccess(digest)
+			if err != nil {
+				return nil, err
+			}
+
+			if time.Since(blobLastAccess) > lastAccess && !seenManifests.Contains(digest) {
+				//TODO: add eligible manifest to iterator `deleted`
 				if !dryRun {
-					if err := cfg.Data.ManifestDelete(repo, d); err != nil {
-						return err
+					if err := cfg.Data.ManifestDelete(repo, digest); err != nil {
+						return nil, err
 					}
 				}
 			}
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func GarbageCollect(
+func sweepBlobs(
 	cfg config.Config,
+	seenBlobs mapset.MapSet,
+	seenManifests mapset.MapSet,
 	dryRun bool,
 	lastAccess time.Duration,
-	deleteUntagged bool,
-) error {
-	if deleteUntagged {
-		if err := deleteUntaggedManifests(cfg, dryRun); err != nil {
-			return err
-		}
-	}
-
-	usedBlobs, usedManifests, err := collectReferencedBlobs(cfg)
-	if err != nil {
-		return err
-	}
-
+) (deleted iter.Seq[string], err error) {
 	blobs, err := cfg.Data.BlobsList()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for blob := range blobs {
 		blobLastAccess, err := cfg.Data.BlobLastAccess(blob)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if time.Since(blobLastAccess) > lastAccess && !usedBlobs.has(blob) && !usedManifests.has(blob) {
-			fmt.Printf("blob eligible for deletion: %s\n", blob)
+		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
+			//TODO: add eligible blob to iterator `deleted`
 			if !dryRun {
 				if err := cfg.Data.BlobsDelete("", blob); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 	}
 
-	return nil
+	return nil, nil
+}
+
+// GarbageCollect deletes unreferrenced blobs (includes manifests blobs).
+func GarbageCollect(
+	cfg config.Config,
+	dryRun bool,
+	lastAccess time.Duration,
+	deleteUntagged bool,
+) (deleted iter.Seq[string], err error) {
+	// Collect all the root manifests from all the repositories.
+	roots, err := collectRootManifests(cfg, deleteUntagged)
+	if err != nil {
+		return nil, err
+	}
+
+	// Mark all manifests and blobs that are referenced by the roots.
+	seenManifests := mapset.NewMapSet()
+	seenBlobs := mapset.NewMapSet()
+	for repo, digests := range roots {
+		for _, d := range digests {
+			if err := markManifest(cfg, repo, d, seenManifests, seenBlobs); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Walk through all the manifests in the data store, and removes any that
+	// is not referenced and is older than the last access time.
+	deletedManifests, err := sweepManifests(cfg, seenManifests, dryRun, lastAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	// Walk through all the blobs in the data store, and removes any that is not
+	// referenced and is older than the last access time.
+	deletedBlobs, err := sweepBlobs(cfg, seenBlobs, seenManifests, dryRun, lastAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	return pkgIter.Concat(deletedManifests, deletedBlobs), nil
 }
