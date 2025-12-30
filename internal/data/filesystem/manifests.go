@@ -214,6 +214,26 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	}
 
 	// Case 2: reference must be a digest.
+
+	// Delete the referrers.
+	r, _, _, err := s.ManifestGet(repo, reference)
+	if err == nil {
+		if data, err := io.ReadAll(r); err == nil {
+			var m registry.ImageManifest
+			if json.Unmarshal(data, &m) == nil && m.Subject != nil {
+				// It is a referrer, so remove the referrer directory.
+				subjAlgo, subjHash, _ := pkgDigest.Parse(m.Subject.Digest)
+				refDir := filepath.Join(
+					s.base, "repositories", repo, "_manifests",
+					"referrers", subjAlgo, subjHash, reference,
+				)
+				os.RemoveAll(refDir)
+			}
+		}
+		r.Close()
+	}
+
+	// Delete the revision.
 	algo, hash, err := pkgDigest.Parse(reference)
 	if err != nil {
 		return errors.Join(httpErr.ErrBadRequest, err)
