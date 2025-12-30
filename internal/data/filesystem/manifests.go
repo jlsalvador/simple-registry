@@ -27,6 +27,7 @@ import (
 
 	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
 	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
+	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -268,61 +269,63 @@ func (s *FilesystemDataStorage) ManifestsList(repo string) (digests iter.Seq[str
 		"_manifests",
 	)
 
-	return func(yield func(string) bool) {
-		// 1. Revisions
-		revisions := filepath.Join(repoPath, "revisions")
-		algos, _ := os.ReadDir(revisions)
+	digestsSet := mapset.NewMapSet()
 
-		for _, algo := range algos {
-			if !algo.IsDir() {
-				continue
-			}
-
-			dir := filepath.Join(revisions, algo.Name())
-			entries, _ := os.ReadDir(dir)
-
-			for _, e := range entries {
-				if !e.IsDir() {
-					continue
-				}
-
-				digest := algo.Name() + ":" + e.Name()
-				if !yield(digest) {
-					return
-				}
-			}
+	// 1. Revisions
+	revisions := filepath.Join(repoPath, "revisions")
+	algos, _ := os.ReadDir(revisions)
+	for _, algo := range algos {
+		if !algo.IsDir() {
+			continue
 		}
 
-		// 2. Referrers
-		referrers := filepath.Join(repoPath, "referrers")
-		algos, _ = os.ReadDir(referrers)
+		dir := filepath.Join(revisions, algo.Name())
+		entries, _ := os.ReadDir(dir)
 
-		for _, algo := range algos {
-			if !algo.IsDir() {
+		for _, e := range entries {
+			if !e.IsDir() {
 				continue
 			}
 
-			algoDir := filepath.Join(referrers, algo.Name())
-			subjects, _ := os.ReadDir(algoDir)
+			digest := algo.Name() + ":" + e.Name()
+			digestsSet.Add(digest)
+		}
+	}
 
-			for _, subj := range subjects {
-				if !subj.IsDir() {
+	// 2. Referrers
+	referrers := filepath.Join(repoPath, "referrers")
+	algos, _ = os.ReadDir(referrers)
+	for _, algo := range algos {
+		if !algo.IsDir() {
+			continue
+		}
+
+		algoDir := filepath.Join(referrers, algo.Name())
+		subjects, _ := os.ReadDir(algoDir)
+
+		for _, subj := range subjects {
+			if !subj.IsDir() {
+				continue
+			}
+
+			subjDir := filepath.Join(algoDir, subj.Name())
+			refs, _ := os.ReadDir(subjDir)
+
+			for _, ref := range refs {
+				if !ref.IsDir() {
 					continue
 				}
 
-				subjDir := filepath.Join(algoDir, subj.Name())
-				refs, _ := os.ReadDir(subjDir)
+				digest := ref.Name() // filename has the algo prefix.
+				digestsSet.Add(digest)
+			}
+		}
+	}
 
-				for _, ref := range refs {
-					if !ref.IsDir() {
-						continue
-					}
-
-					digest := ref.Name()
-					if !yield(digest) {
-						return
-					}
-				}
+	return func(yield func(string) bool) {
+		for digest := range digestsSet {
+			if !yield(digest) {
+				return
 			}
 		}
 	}, nil
