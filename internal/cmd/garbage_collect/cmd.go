@@ -26,10 +26,11 @@ func CmdFn() error {
 		)
 	}
 
-	return GarbageCollect(
+	_, err = GarbageCollect(
 		*cfg,
 		flags.DryRun,
 		flags.LastAccess,
 		flags.DeleteUntagged,
 	)
+	return err
 }
