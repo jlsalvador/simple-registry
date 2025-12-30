@@ -2,7 +2,9 @@ package garbagecollect
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"iter"
 	"time"
 
@@ -11,6 +13,28 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
+
+func markManifestByReferrers(
+	cfg config.Config,
+	repo string,
+	digest string,
+	seenManifests mapset.MapSet,
+	seenBlobs mapset.MapSet,
+) error {
+	referrers, err := cfg.Data.ReferrersGet(repo, digest)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if referrers == nil {
+		return nil
+	}
+	for ref := range referrers {
+		if err := markManifest(cfg, repo, ref, seenManifests, seenBlobs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // markManifest marks a manifest as seen and recursively marks all manifests and
 // blobs it references.
@@ -81,14 +105,8 @@ func markManifest(
 		return fmt.Errorf("unsupported media type: %s", mediaType)
 	}
 
-	referrers, err := cfg.Data.ReferrersGet(repo, digest)
-	if err != nil {
+	if err := markManifestByReferrers(cfg, repo, digest, seenManifests, seenBlobs); err != nil {
 		return err
-	}
-	for ref := range referrers {
-		if err := markManifest(cfg, repo, ref, seenManifests, seenBlobs); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -152,6 +170,8 @@ func sweepManifests(
 	dryRun bool,
 	lastAccess time.Duration,
 ) (deleted iter.Seq[string], err error) {
+	deletedSlice := []string{}
+
 	repos, err := cfg.Data.RepositoriesList()
 	if err != nil {
 		return nil, err
@@ -163,15 +183,17 @@ func sweepManifests(
 		}
 
 		for digest := range digests {
+			// A manifest is saved as a blob, so we need to check the last
+			// access time of the blob it point.
 			blobLastAccess, err := cfg.Data.BlobLastAccess(digest)
 			if err != nil {
 				return nil, err
 			}
 
 			if time.Since(blobLastAccess) > lastAccess && !seenManifests.Contains(digest) {
-				//TODO: add eligible manifest to iterator `deleted`
+				deletedSlice = append(deletedSlice, digest)
 				if !dryRun {
-					if err := cfg.Data.ManifestDelete(repo, digest); err != nil {
+					if err := cfg.Data.ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
 						return nil, err
 					}
 				}
@@ -179,7 +201,13 @@ func sweepManifests(
 		}
 	}
 
-	return nil, nil
+	return func(yield func(string) bool) {
+		for _, digest := range deletedSlice {
+			if !yield(digest) {
+				return
+			}
+		}
+	}, nil
 }
 
 func sweepBlobs(
@@ -189,6 +217,8 @@ func sweepBlobs(
 	dryRun bool,
 	lastAccess time.Duration,
 ) (deleted iter.Seq[string], err error) {
+	deletedSlice := []string{}
+
 	blobs, err := cfg.Data.BlobsList()
 	if err != nil {
 		return nil, err
@@ -201,7 +231,7 @@ func sweepBlobs(
 		}
 
 		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
-			//TODO: add eligible blob to iterator `deleted`
+			deletedSlice = append(deletedSlice, blob)
 			if !dryRun {
 				if err := cfg.Data.BlobsDelete("", blob); err != nil {
 					return nil, err
@@ -210,7 +240,13 @@ func sweepBlobs(
 		}
 	}
 
-	return nil, nil
+	return func(yield func(string) bool) {
+		for _, digest := range deletedSlice {
+			if !yield(digest) {
+				return
+			}
+		}
+	}, nil
 }
 
 // GarbageCollect deletes unreferrenced blobs (includes manifests blobs).
