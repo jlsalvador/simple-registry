@@ -16,7 +16,7 @@ x (A) 2025-12-27 2025-12-23 implement +ocispec filtering by artifact-type. @todo
 x (B) 2025-12-27 2025-12-23 compile rbac scopes regexp. @todo
 x (A) 2025-12-30 2025-12-30 +data.ReferrersGet must return iter of referrers, not JSON. @debt @todo
 x (A) 2025-12-30 2025-12-30 +data ManifestsList returns duplicated digests. @debt @todo
-(B) 2025-12-17 +gc on demand. @todo
+x (B) 2025-12-30 2025-12-17 +gc on demand. @todo
 (B) 2025-12-20 add +yaml manifest field "enabled". @todo
 (C) 2025-12-17 +gc on timer. @todo
 (D) 2025-12-22 config +data dir by +yaml manifest. @todo
