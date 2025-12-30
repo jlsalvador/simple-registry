@@ -93,11 +93,7 @@ type ImageIndexManifest struct {
 	// Merkle Directed Acyclic Graph (DAG) structure,
 	// and is used by the referrers API to include this manifest in the list of
 	// responses for the subject digest.
-	Subject *struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"subject,omitempty"`
+	Subject *DescriptorManifest `json:"subject,omitempty"`
 
 	// This OPTIONAL property contains arbitrary metadata for the image index.
 	// This OPTIONAL property MUST use the annotation rules.
