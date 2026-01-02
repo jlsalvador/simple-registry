@@ -131,11 +131,7 @@ type ImageManifest struct {
 	// For portability, layers SHOULD have at least one entry.
 	// See the guidance for an empty descriptor below, and
 	// DescriptorEmptyJSON of the reference code.
-	Layers []struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"layers"`
+	Layers []DescriptorManifest `json:"layers"`
 
 	// This OPTIONAL property specifies a descriptor of another manifest.
 	// This value defines a weak association to a separate
