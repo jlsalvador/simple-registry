@@ -78,7 +78,7 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 	}
 
 	if len(hash) < 2 {
-		return ErrDigestMismatch
+		return ErrHashShort
 	}
 
 	// Link path
