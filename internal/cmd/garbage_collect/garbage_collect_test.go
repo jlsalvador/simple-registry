@@ -249,9 +249,15 @@ func TestGarbageCollect(t *testing.T) {
 		len(blobs)+len(indexes)+len(attestations)+len(images),
 	)
 
-	deleted, err := garbagecollect.GarbageCollect(*cfg, false, 1, false)
+	gotDeletedBlobs, gotDeletedManifests, _, _, err := garbagecollect.GarbageCollect(*cfg, false, 1, false)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	nDeletedManifests := len(slices.Collect(gotDeletedManifests))
+	wantDeletedManifests := 0 // None should be deleted as we are not deleting untagged manifests.
+	if nDeletedManifests != wantDeletedManifests {
+		t.Errorf("expected %d deleted manifests, got %d", wantDeletedManifests, nDeletedManifests)
 	}
 
 	validateHowMany(
@@ -260,17 +266,17 @@ func TestGarbageCollect(t *testing.T) {
 		len(blobs)-1+len(indexes)+len(attestations)+len(images),
 	)
 
-	deletedAsSlice := slices.Collect(deleted)
-	slices.Sort(deletedAsSlice)
-	deletedAsSlice = slices.Compact(deletedAsSlice)
+	gotDeletedBlobsSlice := slices.Collect(gotDeletedBlobs)
+	slices.Sort(gotDeletedBlobsSlice)
+	gotDeletedBlobsSlice = slices.Compact(gotDeletedBlobsSlice)
 
 	// Only the fourth blob should be deleted.
-	deletedDigests := []string{
+	wantDeletedBlobs := []string{
 		blobs[3].Digest,
 	}
 
-	if slices.Compare(deletedAsSlice, deletedDigests) != 0 {
-		t.Errorf("expected %v, got %v", deletedDigests, deletedAsSlice)
+	if slices.Compare(gotDeletedBlobsSlice, wantDeletedBlobs) != 0 {
+		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobsSlice)
 	}
 }
 
@@ -286,9 +292,15 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		len(blobs)+len(indexes)+len(attestations)+len(images),
 	)
 
-	deleted, err := garbagecollect.GarbageCollect(*cfg, false, 1, true)
+	gotDeletedBlobs, gotDeletedManifests, _, _, err := garbagecollect.GarbageCollect(*cfg, false, 1, true)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	nDeletedManifests := len(slices.Collect(gotDeletedManifests))
+	wantDeletedManifests := len(indexes) - 1 + len(attestations) - 1 + len(images) - 1 // Only the last manifest has a tag.
+	if nDeletedManifests != wantDeletedManifests {
+		t.Errorf("expected %d deleted manifests, got %d", wantDeletedManifests, nDeletedManifests)
 	}
 
 	validateHowMany(
@@ -297,12 +309,12 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		4, // There are one blob, one index, one image, and one attestation.
 	)
 
-	deletedAsSlice := slices.Collect(deleted)
-	slices.Sort(deletedAsSlice)
-	deletedAsSlice = slices.Compact(deletedAsSlice)
+	gotDeletedBlobsSlice := slices.Collect(gotDeletedBlobs)
+	slices.Sort(gotDeletedBlobsSlice)
+	gotDeletedBlobsSlice = slices.Compact(gotDeletedBlobsSlice)
 
 	// All blobs and manifests except the last manifests should be deleted.
-	deletedDigests := []string{
+	wantDeletedBlobs := []string{
 		blobs[0].Digest,
 		blobs[1].Digest,
 		blobs[3].Digest,
@@ -313,8 +325,8 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		attestations[0].Digest,
 		attestations[1].Digest,
 	}
-	slices.Sort(deletedDigests)
-	if slices.Compare(deletedAsSlice, deletedDigests) != 0 {
-		t.Errorf("expected %v, got %v", deletedDigests, deletedAsSlice)
+	slices.Sort(wantDeletedBlobs)
+	if slices.Compare(gotDeletedBlobsSlice, wantDeletedBlobs) != 0 {
+		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobsSlice)
 	}
 }

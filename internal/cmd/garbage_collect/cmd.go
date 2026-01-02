@@ -1,6 +1,10 @@
 package garbagecollect
 
-import "github.com/jlsalvador/simple-registry/internal/config"
+import (
+	"fmt"
+
+	"github.com/jlsalvador/simple-registry/internal/config"
+)
 
 const CmdName = "garbage-collect"
 const CmdHelp = "Removes blobs when they are no longer referenced by a manifest."
@@ -26,11 +30,30 @@ func CmdFn() error {
 		)
 	}
 
-	_, err = GarbageCollect(
+	deletedBlobs, _, seenBlobs, _, err := GarbageCollect(
 		*cfg,
 		flags.DryRun,
 		flags.LastAccess,
 		flags.DeleteUntagged,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	nDeleted := 0
+	for digest := range deletedBlobs {
+		nDeleted++
+		if flags.DryRun {
+			fmt.Printf("blob eligible for deletion: %s\n", digest)
+		} else {
+			fmt.Printf("blob deleted: %s\n", digest)
+		}
+	}
+	if flags.DryRun {
+		fmt.Printf("%d blobs marked, %d blobs eligible for deletion", len(seenBlobs), nDeleted)
+	} else {
+		fmt.Printf("%d blobs marked, %d blobs deleted\n", len(seenBlobs), nDeleted)
+	}
+
+	return nil
 }
