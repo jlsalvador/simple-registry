@@ -39,6 +39,7 @@ type DataStorage interface {
 	ManifestGet(repo, reference string) (r io.ReadCloser, size int64, digest string, err error)
 	ManifestDelete(repo, reference string) error
 	ManifestsList(repo string) (digests iter.Seq[string], err error)
+	ManifestLastAccess(digest string) (lastAccess time.Time, err error)
 
 	TagsList(repo string) ([]string, error)
 

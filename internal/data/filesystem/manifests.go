@@ -24,6 +24,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"time"
 
 	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
 	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
@@ -329,4 +330,9 @@ func (s *FilesystemDataStorage) ManifestsList(repo string) (digests iter.Seq[str
 			}
 		}
 	}, nil
+}
+
+func (s *FilesystemDataStorage) ManifestLastAccess(digest string) (lastAccess time.Time, err error) {
+	// Our manifests are stored as blobs, so return its blob last access time.
+	return s.BlobLastAccess(digest)
 }
