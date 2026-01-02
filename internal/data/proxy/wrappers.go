@@ -91,6 +91,13 @@ func (s *ProxyDataStorage) ManifestsList(repo string) (digests iter.Seq[string],
 
 	return s.ds.ManifestsList(repo)
 }
+func (s *ProxyDataStorage) ManifestLastAccess(digest string) (lastAccess time.Time, err error) {
+	if s.ds == nil {
+		return time.Now(), ErrDataStorageNotInitialized
+	}
+
+	return s.ds.BlobLastAccess(digest)
+}
 
 // Repositories
 

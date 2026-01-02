@@ -182,14 +182,12 @@ func sweepManifests(
 		}
 
 		for digest := range digests {
-			// A manifest is saved as a blob, so we need to check the last
-			// access time of the blob it point.
-			blobLastAccess, err := cfg.Data.BlobLastAccess(digest)
+			manifestLastAccess, err := cfg.Data.ManifestLastAccess(digest)
 			if err != nil {
 				return nil, err
 			}
 
-			if time.Since(blobLastAccess) > lastAccess && !seenManifests.Contains(digest) {
+			if time.Since(manifestLastAccess) > lastAccess && !seenManifests.Contains(digest) {
 				deletedSlice = append(deletedSlice, digest)
 				if !dryRun {
 					if err := cfg.Data.ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
