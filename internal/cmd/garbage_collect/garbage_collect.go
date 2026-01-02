@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
-	pkgIter "github.com/jlsalvador/simple-registry/pkg/iter"
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -255,37 +254,43 @@ func GarbageCollect(
 	dryRun bool,
 	lastAccess time.Duration,
 	deleteUntagged bool,
-) (deleted iter.Seq[string], err error) {
+) (
+	deletedBlobs iter.Seq[string],
+	deletedManifests iter.Seq[string],
+	markedBlobs mapset.MapSet,
+	markedManifests mapset.MapSet,
+	err error,
+) {
 	// Collect all the root manifests from all the repositories.
 	roots, err := collectRootManifests(cfg, deleteUntagged)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	// Mark all manifests and blobs that are referenced by the roots.
-	seenManifests := mapset.NewMapSet()
-	seenBlobs := mapset.NewMapSet()
+	markedManifests = mapset.NewMapSet()
+	markedBlobs = mapset.NewMapSet()
 	for repo, digests := range roots {
 		for _, d := range digests {
-			if err := markManifest(cfg, repo, d, seenManifests, seenBlobs); err != nil {
-				return nil, err
+			if err = markManifest(cfg, repo, d, markedManifests, markedBlobs); err != nil {
+				return
 			}
 		}
 	}
 
 	// Walk through all the manifests in the data store, and removes any that
 	// is not referenced and is older than the last access time.
-	deletedManifests, err := sweepManifests(cfg, seenManifests, dryRun, lastAccess)
+	deletedManifests, err = sweepManifests(cfg, markedManifests, dryRun, lastAccess)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	// Walk through all the blobs in the data store, and removes any that is not
 	// referenced and is older than the last access time.
-	deletedBlobs, err := sweepBlobs(cfg, seenBlobs, seenManifests, dryRun, lastAccess)
+	deletedBlobs, err = sweepBlobs(cfg, markedBlobs, markedManifests, dryRun, lastAccess)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	return pkgIter.Concat(deletedManifests, deletedBlobs), nil
+	return deletedBlobs, deletedManifests, markedBlobs, markedManifests, nil
 }
