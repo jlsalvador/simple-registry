@@ -16,23 +16,6 @@ and pull-through caching.
 
 ---
 
-## 🏗️ Status
-
-The core functionality is stable, and OCI conformance is actively being validated.
-
-- ✅ Completed:
-  - Core push/pull
-  - RBAC and Auth models.
-  - Pull-through cache.
-- 📆 Upcoming:
-  - Garbage collection of unused blobs.
-  - The internal YAML configuration schema is still evolving and may change in
-    backward-incompatible ways prior to v1.0.
-
-Pull requests are welcome.
-
----
-
 ## 🏁 Quick Start
 
 ### 1. Launch the registry
