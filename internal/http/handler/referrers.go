@@ -81,11 +81,7 @@ func (m *ServeMux) ReferrersGet(
 	}
 
 	referrers, err := m.cfg.Data.ReferrersGet(repo, dgst)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(netHttp.StatusNotFound)
-			return
-		}
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -93,26 +89,28 @@ func (m *ServeMux) ReferrersGet(
 	filterByArtifactType := r.URL.Query().Get("artifactType")
 
 	index := registry.NewImageIndexManifest()
-	for ref := range referrers {
-		blob, size, err := m.cfg.Data.BlobsGet(repo, ref)
-		if err != nil {
-			w.WriteHeader(netHttp.StatusInternalServerError)
-			return
-		}
-		defer blob.Close()
+	if referrers != nil {
+		for ref := range referrers {
+			blob, size, err := m.cfg.Data.BlobsGet(repo, ref)
+			if err != nil {
+				w.WriteHeader(netHttp.StatusInternalServerError)
+				return
+			}
+			defer blob.Close()
 
-		blobManifest := genericManifest{}
-		if err := json.NewDecoder(blob).Decode(&blobManifest); err != nil {
-			continue
-		}
+			blobManifest := genericManifest{}
+			if err := json.NewDecoder(blob).Decode(&blobManifest); err != nil {
+				continue
+			}
 
-		if !isSkipableManifest(filterByArtifactType, blobManifest) {
-			index.Manifests = append(index.Manifests, registry.DescriptorManifest{
-				MediaType:   blobManifest.MediaType,
-				Digest:      ref,
-				Size:        size,
-				Annotations: blobManifest.Annotations,
-			})
+			if !isSkipableManifest(filterByArtifactType, blobManifest) {
+				index.Manifests = append(index.Manifests, registry.DescriptorManifest{
+					MediaType:   blobManifest.MediaType,
+					Digest:      ref,
+					Size:        size,
+					Annotations: blobManifest.Annotations,
+				})
+			}
 		}
 	}
 
