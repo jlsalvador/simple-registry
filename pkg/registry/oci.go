@@ -125,11 +125,7 @@ type ImageManifest struct {
 
 	// This REQUIRED property references a configuration object for a container,
 	// by digest.
-	Config struct {
-		MediaType string `json:"mediaType"`
-		Digest    string `json:"digest"`
-		Size      int64  `json:"size"`
-	} `json:"config"`
+	Config DescriptorManifest `json:"config"`
 
 	// Each item in the array MUST be a descriptor.
 	// For portability, layers SHOULD have at least one entry.
