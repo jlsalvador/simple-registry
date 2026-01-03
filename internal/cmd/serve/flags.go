@@ -3,15 +3,17 @@ package serve
 import (
 	"flag"
 	"os"
+	"strings"
 
 	cliFlag "github.com/jlsalvador/simple-registry/pkg/cli/flag"
+	"github.com/jlsalvador/simple-registry/pkg/common"
 )
 
 type Flags struct {
 	Addr    string
 	DataDir string
 
-	CfgDir []string
+	CfgDir cliFlag.StringSlice
 
 	AdminName    string
 	AdminPwd     string
@@ -21,33 +23,32 @@ type Flags struct {
 	KeyFile  string
 }
 
+const ENV_PREFIX = "SIMPLE_REGISTRY_"
+
 func parseFlags() (flags Flags, err error) {
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
-	addr := flagSet.String("addr", "0.0.0.0:5000", "Listening address")
-	dataDir := flagSet.String("datadir", "./data", "Data directory")
+	flagSet.StringVar(&flags.Addr, "addr", common.GetEnv(ENV_PREFIX+"ADDR", "0.0.0.0:5000"), "Listening address")
+	flagSet.StringVar(&flags.DataDir, "datadir", common.GetEnv(ENV_PREFIX+"DATADIR", "./data"), "Data directory")
 
-	cfgDir := cliFlag.FlagValueStringSlice{}
-	flagSet.Var(&cfgDir, "cfgdir", "Directory with YAML configuration files\nCould be specified multiple times")
+	flagSet.Var(&flags.CfgDir, "cfgdir", "Directory with YAML configuration files\nCould be specified multiple times")
 
-	adminName := flagSet.String("adminname", "admin", "Administrator name\nIgnored if -cfgdir is set")
-	adminPwd := flagSet.String("adminpwd", "", "Administrator password\nLeaked by procfs! use adminpwdfile instead\nIgnored if -adminpwdfile is set\nIgnored if -cfgdir is set")
-	adminPwdFile := flagSet.String("adminpwdfile", "", "Fetch administrator password from file\nIgnored if -cfgdir is set")
+	flagSet.StringVar(&flags.AdminName, "adminname", common.GetEnv(ENV_PREFIX+"ADMINNAME", "admin"), "Administrator name\nIgnored if -cfgdir is set")
+	flagSet.StringVar(&flags.AdminPwd, "adminpwd", common.GetEnv(ENV_PREFIX+"ADMINPWD", ""), "Administrator password\nLeaked by procfs! use adminpwdfile instead\nIgnored if -adminpwdfile is set\nIgnored if -cfgdir is set")
+	flagSet.StringVar(&flags.AdminPwdFile, "adminpwdfile", common.GetEnv(ENV_PREFIX+"ADMINPWDFILE", ""), "Fetch administrator password from file\nIgnored if -cfgdir is set")
 
-	certFile := flagSet.String("certfile", "", "TLS certificate file\nEnables HTTPS")
-	keyFile := flagSet.String("keyfile", "", "TLS key file")
+	flagSet.StringVar(&flags.CertFile, "certfile", common.GetEnv(ENV_PREFIX+"CERTFILE", ""), "TLS certificate file\nEnables HTTPS")
+	flagSet.StringVar(&flags.KeyFile, "keyfile", common.GetEnv(ENV_PREFIX+"KEYFILE", ""), "TLS key file")
 
 	if err = flagSet.Parse(os.Args[2:]); err != nil {
 		return
 	}
 
-	flags.Addr = *addr
-	flags.DataDir = *dataDir
-	flags.CfgDir = cfgDir.Slice
-	flags.AdminName = *adminName
-	flags.AdminPwd = *adminPwd
-	flags.AdminPwdFile = *adminPwdFile
-	flags.CertFile = *certFile
-	flags.KeyFile = *keyFile
+	if envVal, ok := os.LookupEnv(ENV_PREFIX + "CFGDIR"); len(flags.CfgDir) == 0 && ok {
+		dirs := strings.SplitSeq(envVal, ",")
+		for d := range dirs {
+			flags.CfgDir = append(flags.CfgDir, strings.TrimSpace(d))
+		}
+	}
 
 	return
 }
