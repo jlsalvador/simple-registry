@@ -29,6 +29,9 @@ simple-registry serve \
   -adminpwd secret
 ```
 
+> **ℹ️ Note:**
+> You can see more options by running `simple-registry serve -h`.
+
 ### 2. Usage Example
 
 ```sh
@@ -44,46 +47,20 @@ docker push localhost:5000/library/busybox
 
 ---
 
-## 🐳 Launch as a Container
+## 🐳 Quick Deployment with Docker Compose
 
-To launch the registry as a container, you can use the following command:
+The easiest way to run Simple Registry with persistent storage:
+
+1. **Create a [`compose.yaml`](./compose.yaml) file**
+2. **Launch it:**
 
 ```sh
-# Generate an admin hashed password.
-#
-# Note the space before `echo`. This is necessary to prevent saving the
-# password in your shell history.
- echo -n "secret" | docker run \
-  -i --rm \
-  docker.io/jlsalvador/simple-registry:latest \
-    genhash > admin-password.txt
-
-# Create a volume with the proper permissions for nonroot.
-#
-# The user & group IDs were obtained from:
-# https://github.com/GoogleContainerTools/distroless/blob/main/common/variables.bzl#L17
-docker run --rm \
-  -v simple-registry:/data \
-  --user root \
-  docker.io/library/busybox \
-    chown -R 65532:65534 /data
-
-docker run \
-  -d \
-  --restart on-failure \
-  --name simple-registry \
-  -p 5000:5000 \
-  -v simple-registry:/data \
-  -v $(pwd)/admin-password.txt:/pwd.txt:ro \
-  docker.io/jlsalvador/simple-registry:latest \
-    serve \
-    -adminpwdfile /pwd.txt \
-    -datadir /data
+docker compose up -d
 ```
 
 ---
 
-## ⚙️ Configuration & RBAC
+## ⚙️ Configuration
 
 The registry can be configured via YAML manifests.
 You can split your configuration into multiple files and directories using the
@@ -107,8 +84,11 @@ simple-registry serve \
   -cfgdir ./proxies
 ```
 
-Please, read the [docs](docs) to learn more about the configuration files and
-their syntax.
+Please, read the [docs](docs) to learn more about each configuration and their
+syntax:
+
+- [Production-grade guide](docs/production-grade.md)
+- [Pull-Through Cache](docs/pull-through-cache.md)
 
 > **ℹ️ Note:**
 > There are some manifests examples in [docs/examples](docs/examples)

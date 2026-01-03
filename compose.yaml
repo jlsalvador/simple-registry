@@ -1,0 +1,28 @@
+services:
+  # Fix volume permissions for nonroot user
+  init:
+    image: docker.io/library/busybox
+    user: root
+    volumes:
+      - simple-registry-data:/data
+    command: chown 65532:65534 /data
+
+  simple-registry:
+    image: docker.io/jlsalvador/simple-registry:latest
+    container_name: simple-registry
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "5000:5000"
+    volumes:
+      - simple-registry-data:/data
+    environment:
+      - SIMPLE_REGISTRY_DATADIR=/data
+      - SIMPLE_REGISTRY_ADMINPWD=changeme
+    command:
+      - serve
+    restart: unless-stopped
+
+volumes:
+  simple-registry-data:
