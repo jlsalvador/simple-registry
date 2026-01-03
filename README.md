@@ -9,7 +9,7 @@ and pull-through caching.
 
 - **🎖️ OCI Native:** Implements the [OCI Distribution Specification v1.1.1][oci-spec].
 - **🪶 Lightweight:** Low memory footprint and minimal dependencies.
-- **🛂 Role-based Access Control (RBAC):** Per repository, action, and role.
+- **🛂 Role-Based Access Control (RBAC):** Per repository, action, and role.
 - **📦 Pull-through Caching:** Configurable on-demand caching from external registries.
 - **🔒 Flexible Authentication:** Anonymous, Basic Auth, and tokens.
 - **🌀 Stateless & Scalable:** Horizontal scaling backed by shared storage.
@@ -68,12 +68,11 @@ You can split your configuration into multiple files and directories using the
 
 Here are a few components that can be configured:
 
-| Component | Description                                   |
-| --------- | --------------------------------------------- |
-| Storage   | Defines where the blobs are stored.           |
-| Identity  | Definition of Users and Groups.               |
-| RBAC      | Rules linking roles to control access.        |
-| Cache     | Configuration for pull-through cache targets. |
+| Component       | Description                                   |
+| --------------- | --------------------------------------------- |
+| Configuration   | Defines Simple Registry's behavior.           |
+| Identity & RBAC | Rules linking roles to users and groups.      |
+| Cache           | Configuration for pull-through cache targets. |
 
 Example:
 
@@ -87,25 +86,12 @@ simple-registry serve \
 Please, read the [docs](docs) to learn more about each configuration and their
 syntax:
 
+- [Role-Based Access Control](docs/role-based-access-control.md)
 - [Production-grade guide](docs/production-grade.md)
 - [Pull-Through Cache](docs/pull-through-cache.md)
 
 > **ℹ️ Note:**
 > There are some manifests examples in [docs/examples](docs/examples)
-
----
-
-## 🔒 Authentication Model
-
-You can define, using regular expressions, which users and groups
-have access to specific repositories.
-
-Simple Registry evaluates requests in three tiers:
-
-1. **Anonymous:** Mixes public and private repositories.
-2. **Basic Auth:** Defines users and groups for basic authentication.
-   Passwords are hashed using bcrypt.
-3. **Bearer Token:** Supports issued tokens with built-in expiration validation.
 
 ---
 
