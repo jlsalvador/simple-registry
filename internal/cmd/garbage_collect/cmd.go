@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/internal/version"
+	"github.com/jlsalvador/simple-registry/pkg/log"
 )
 
 const CmdName = "garbage-collect"
@@ -30,7 +32,7 @@ func CmdFn() error {
 		)
 	}
 
-	deletedBlobs, _, seenBlobs, _, err := GarbageCollect(
+	deletedBlobs, deletedManifests, seenBlobs, seenManifests, err := GarbageCollect(
 		*cfg,
 		flags.DryRun,
 		flags.LastAccess,
@@ -40,19 +42,66 @@ func CmdFn() error {
 		return err
 	}
 
-	nDeleted := 0
-	for digest := range deletedBlobs {
-		nDeleted++
+	nManifestsDeleted := 0
+	for digest := range deletedManifests {
+		nManifestsDeleted++
 		if flags.DryRun {
-			fmt.Printf("blob eligible for deletion: %s\n", digest)
+			log.Debug(
+				"service.name", version.AppName,
+				"service.version", version.AppVersion,
+				"event.dataset", "cmd.garbage_collect",
+				"message", fmt.Sprintf("manifest eligible for deletion: %s", digest),
+			).Print()
 		} else {
-			fmt.Printf("blob deleted: %s\n", digest)
+			log.Debug(
+				"service.name", version.AppName,
+				"service.version", version.AppVersion,
+				"event.dataset", "cmd.garbage_collect",
+				"message", fmt.Sprintf("manifest deleted: %s", digest),
+			).Print()
+		}
+	}
+
+	nBlobsDeleted := 0
+	for digest := range deletedBlobs {
+		nBlobsDeleted++
+		if flags.DryRun {
+			log.Debug(
+				"service.name", version.AppName,
+				"service.version", version.AppVersion,
+				"event.dataset", "cmd.garbage_collect",
+				"message", fmt.Sprintf("blob eligible for deletion: %s", digest),
+			).Print()
+		} else {
+			log.Debug(
+				"service.name", version.AppName,
+				"service.version", version.AppVersion,
+				"event.dataset", "cmd.garbage_collect",
+				"message", fmt.Sprintf("blob deleted: %s", digest),
+			).Print()
 		}
 	}
 	if flags.DryRun {
-		fmt.Printf("%d blobs marked, %d blobs eligible for deletion", len(seenBlobs), nDeleted)
+		log.Info(
+			"service.name", version.AppName,
+			"service.version", version.AppVersion,
+			"event.dataset", "cmd.garbage_collect",
+			"message", fmt.Sprintf(
+				"%d manifests marked, %d blobs marked, %d manifests eligible for deletion, %d blobs eligible for deletion",
+				len(seenManifests), len(seenBlobs), nManifestsDeleted, nBlobsDeleted,
+			),
+		).Print()
+
 	} else {
-		fmt.Printf("%d blobs marked, %d blobs deleted\n", len(seenBlobs), nDeleted)
+		log.Info(
+			"service.name", version.AppName,
+			"service.version", version.AppVersion,
+			"event.dataset", "cmd.garbage_collect",
+			"message", fmt.Sprintf(
+				"%d manifests marked, %d blobs marked, %d manifests deleted, %d blobs deleted",
+				len(seenManifests), len(seenBlobs), nManifestsDeleted, nBlobsDeleted,
+			),
+		).Print()
 	}
 
 	return nil
