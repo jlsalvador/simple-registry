@@ -33,25 +33,27 @@ func (s *FilesystemDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, 
 		return nil, -1, ErrHashShort
 	}
 
-	// Check repository link
-	linkPath := filepath.Join(
-		s.base,
-		"repositories",
-		repo,
-		"_layers",
-		algo,
-		hash,
-		"link",
-	)
+	if repo != "" {
+		// Check repository link
+		linkPath := filepath.Join(
+			s.base,
+			"repositories",
+			repo,
+			"_layers",
+			algo,
+			hash,
+			"link",
+		)
 
-	linkData, err := os.ReadFile(linkPath)
-	if err != nil {
-		return nil, -1, fmt.Errorf("cannot read link %s: %w", linkPath, err)
-	}
+		linkData, err := os.ReadFile(linkPath)
+		if err != nil {
+			return nil, -1, fmt.Errorf("cannot read link %s: %w", linkPath, err)
+		}
 
-	// Verify link content matches requested digest
-	if string(linkData) != digest {
-		return nil, -1, fmt.Errorf("repository link mismatch: expected %s, got %s", digest, string(linkData))
+		// Verify link content matches requested digest
+		if string(linkData) != digest {
+			return nil, -1, fmt.Errorf("repository link mismatch: expected %s, got %s", digest, string(linkData))
+		}
 	}
 
 	// Open the actual blob

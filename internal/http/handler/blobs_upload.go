@@ -30,6 +30,9 @@ import (
 
 // blobsUploadsPostMount mounts blob from other repository.
 // ACL must be already checked.
+//
+// `mount` must be a valid digest.
+// `from` could be empty.
 func blobsUploadsPostMount(
 	cfg config.Config,
 	repo string,
@@ -181,11 +184,20 @@ func (m *ServeMux) BlobsUploadsPost(
 
 	// Case 1. Mount blob from other repository.
 	mount := r.URL.Query().Get("mount")
+	if mount != "" && !registry.RegExprDigest.MatchString(mount) {
+		w.WriteHeader(netHttp.StatusBadRequest)
+		return
+	}
 	from := r.URL.Query().Get("from")
-	if mount != "" && from != "" {
-		// Check if the user can pull the other repository.
-		if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
-			w.WriteHeader(netHttp.StatusForbidden)
+	if from != "" && !registry.RegExprName.MatchString(from) {
+		w.WriteHeader(netHttp.StatusBadRequest)
+		return
+	}
+	// Check if the user can pull the other repository.
+	// `from` could be empty if automatic content discovery is enabled.
+	if mount != "" {
+		if !m.cfg.Rbac.IsAllowed(username, "blobs", from, netHttp.MethodGet) {
+			w.WriteHeader(netHttp.StatusUnauthorized)
 			return
 		}
 

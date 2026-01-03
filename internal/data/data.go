@@ -20,6 +20,9 @@ import (
 )
 
 type DataStorage interface {
+	// BlobsGet retrieves a blob from the storage.
+	//
+	// `repo` is the name of the repository, and could be empty.
 	BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error)
 	BlobsDelete(repo, digest string) error
 
