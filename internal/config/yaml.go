@@ -1,12 +1,14 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
 	"github.com/jlsalvador/simple-registry/internal/data/proxy"
+	"github.com/jlsalvador/simple-registry/internal/version"
 	"github.com/jlsalvador/simple-registry/pkg/log"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
@@ -43,6 +45,19 @@ func parseYamlDir(dirName string) (manifests []any, err error) {
 		if err != nil {
 			return nil, err
 		}
+
+		fullFilenamePath, err := filepath.Abs(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Debug(
+			"service.name", version.AppName,
+			"service.version", version.AppVersion,
+			"event.dataset", "cmd.serve",
+			"file.path", fullFilenamePath,
+			"message", fmt.Sprintf("%d manifest(s) added", len(m)),
+		).Print()
 
 		manifests = append(manifests, m...)
 	}
