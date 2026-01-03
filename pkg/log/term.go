@@ -30,7 +30,7 @@ const (
 )
 
 var RegexKeys = regexp.MustCompile(`(\"[^\"]+\"\s*:)`)
-var RegexBold = regexp.MustCompile(`(\"(?:m|msg|message|d|dbg|debug|i|inf|info|information|informational|e|err|error|w|warn|warning|http\.request\.method|url\.original|http\.response\.status_code)\"\s*:\s*)(\"(?:\\.|[^"\\])*\"|\d+)`)
+var RegexBold = regexp.MustCompile(`(\"(?:m|msg|message|d|dbg|debug|i|inf|info|information|informational|e|err|error|w|warn|warning|file\.path|http\.request\.method|url\.original|http\.response\.status_code)\"\s*:\s*)(\"(?:\\.|[^"\\])*\"|\d+)`)
 
 // enhanceJSONForTerminal applies ANSI escape codes to make the log output
 // more readable in a terminal.

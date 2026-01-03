@@ -27,8 +27,8 @@ func TestEnhanceJSONForTerminal(t *testing.T) {
 		contains []string
 	}{
 		{
-			name:  "log.level error with bold msg",
-			json:  `{"msg":"fatal error","status":500}`,
+			name:  "log.level error with bold message",
+			json:  `{"message":"fatal error","status":500}`,
 			level: LevelError,
 			contains: []string{
 				ansiRed,
@@ -58,7 +58,7 @@ func TestEnhanceJSONForTerminal(t *testing.T) {
 		},
 		{
 			name:  "log.level info no full line color",
-			json:  `{"msg":"hello"}`,
+			json:  `{"message":"hello"}`,
 			level: LevelInfo,
 			contains: []string{
 				ansiBold,

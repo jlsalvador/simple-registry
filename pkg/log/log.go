@@ -20,7 +20,7 @@
 // Example:
 //
 //	log.Info(
-//	    "msg", "server started",
+//	    "message", "server started",
 //	    "port", 8080,
 //	).Print()
 package log
@@ -36,10 +36,10 @@ import (
 )
 
 const (
-	LevelDebug = "debug" // Output msg to [os.Stdout].
-	LevelInfo  = "info"  // Output msg to [os.Stdout].
-	LevelWarn  = "warn"  // Output msg to [os.Stderr].
-	LevelError = "error" // Output msg to [os.Stderr].
+	LevelDebug = "debug" // Print to [os.Stdout].
+	LevelInfo  = "info"  // Print to [os.Stdout].
+	LevelWarn  = "warn"  // Print to [os.Stderr].
+	LevelError = "error" // Print to [os.Stderr].
 )
 
 const (

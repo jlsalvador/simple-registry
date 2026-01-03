@@ -39,12 +39,12 @@ func TestInfoPrintStdout(t *testing.T) {
 	DefaultStderr = &buf
 	DefaultPrettyPrint = false
 
-	Info("msg", "hello").Print()
+	Info("message", "hello").Print()
 
 	m := parseJSON(t, buf.String())
 
-	if m["msg"] != "hello" {
-		t.Fatalf("expected msg=hello, got %v", m["msg"])
+	if m["message"] != "hello" {
+		t.Fatalf("expected message=hello, got %v", m["message"])
 	}
 	if m[FieldLevel] != LevelInfo {
 		t.Fatalf("expected level INFO, got %v", m[FieldLevel])
@@ -181,7 +181,7 @@ func TestMockTerminal(t *testing.T) {
 	DefaultStdout = &buf
 	DefaultStderr = &buf
 
-	Info("msg", "testing bold").Print()
+	Info("message", "testing bold").Print()
 	if !strings.Contains(buf.String(), "\033[1m") {
 		t.Fatalf("expected ANSI escape code for bold")
 	}
