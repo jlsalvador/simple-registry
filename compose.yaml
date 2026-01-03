@@ -20,8 +20,6 @@ services:
     environment:
       - SIMPLE_REGISTRY_DATADIR=/data
       - SIMPLE_REGISTRY_ADMINPWD=changeme
-    command:
-      - serve
     restart: unless-stopped
 
 volumes:

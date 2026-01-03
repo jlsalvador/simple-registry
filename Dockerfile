@@ -34,3 +34,4 @@ WORKDIR /
 COPY --from=builder /workspace/app /app
 
 ENTRYPOINT ["/app"]
+CMD ["serve"]
