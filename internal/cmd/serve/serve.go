@@ -54,7 +54,7 @@ func CmdFn() error {
 		"event.dataset", "cmd.serve",
 		"addr", flags.Addr,
 		"scheme", scheme,
-		"msg", "listening for requests",
+		"message", "listening for requests",
 	).Print()
 
 	if isTLS {
