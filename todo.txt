@@ -26,6 +26,7 @@ x (A) 2026-01-05 2026-01-05 add docker schema v1 support for +gc. @todo
 (D) 2025-12-22 config +data dir by +yaml manifest. @todo
 (D) 2025-12-21 pull through +cache ttl support. @todo
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
+2026-01-05 add test for +gc WITH pull through +cache. @todo
 2025-12-17 external optional auth. +rbac @whish
 2025-12-17 web ui for admin. +admin @whish
 2025-12-17 reload +yaml on demand. @whish
