@@ -98,45 +98,19 @@ func markManifest(
 
 	case registry.MediaTypeOCIImageManifest,
 		registry.MediaTypeDockerImageManifest:
-
-		var manifest registry.ImageManifest
-		if err := json.Unmarshal(payload, &manifest); err != nil {
+		if err := markImageManifest(payload, seenBlobs); err != nil {
 			return err
-		}
-
-		if manifest.Config.Digest != "" {
-			seenBlobs.Add(manifest.Config.Digest)
-		}
-
-		for _, layer := range manifest.Layers {
-			seenBlobs.Add(layer.Digest)
 		}
 
 	case registry.MediaTypeOCIImageIndex,
 		registry.MediaTypeDockerManifestList:
-
-		var index registry.ImageIndexManifest
-		if err := json.Unmarshal(payload, &index); err != nil {
+		if err := markIndexManifest(payload, cfg, repo, seenManifests, seenBlobs); err != nil {
 			return err
-		}
-
-		for _, m := range index.Manifests {
-			if err := markManifest(cfg, repo, m.Digest, seenManifests, seenBlobs); err != nil {
-				return err
-			}
 		}
 
 	case registry.MediaTypeDockerImageManifestV1:
-
-		var manifest registry.DockerManifestV1
-		if err := json.Unmarshal(payload, &manifest); err != nil {
+		if err := markDockerV1Manifest(payload, seenBlobs); err != nil {
 			return err
-		}
-
-		for _, layer := range manifest.FSLayers {
-			if layer.BlobSum != "" {
-				seenBlobs.Add(layer.BlobSum)
-			}
 		}
 
 	default:
@@ -147,6 +121,50 @@ func markManifest(
 		return err
 	}
 
+	return nil
+}
+
+func markImageManifest(payload []byte, seenBlobs mapset.MapSet) error {
+	var manifest registry.ImageManifest
+	if err := json.Unmarshal(payload, &manifest); err != nil {
+		return err
+	}
+
+	if manifest.Config.Digest != "" {
+		seenBlobs.Add(manifest.Config.Digest)
+	}
+
+	for _, layer := range manifest.Layers {
+		seenBlobs.Add(layer.Digest)
+	}
+	return nil
+}
+
+func markIndexManifest(payload []byte, cfg config.Config, repo string, seenManifests mapset.MapSet, seenBlobs mapset.MapSet) error {
+	var index registry.ImageIndexManifest
+	if err := json.Unmarshal(payload, &index); err != nil {
+		return err
+	}
+
+	for _, m := range index.Manifests {
+		if err := markManifest(cfg, repo, m.Digest, seenManifests, seenBlobs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func markDockerV1Manifest(payload []byte, seenBlobs mapset.MapSet) error {
+	var manifest registry.DockerManifestV1
+	if err := json.Unmarshal(payload, &manifest); err != nil {
+		return err
+	}
+
+	for _, layer := range manifest.FSLayers {
+		if layer.BlobSum != "" {
+			seenBlobs.Add(layer.BlobSum)
+		}
+	}
 	return nil
 }
 
