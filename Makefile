@@ -27,19 +27,29 @@ NPROCS = $(shell grep -c 'processor' /proc/cpuinfo || printf 1)
 MAKEFLAGS += -j$(NPROCS)
 
 BUILD_DIR ?= $(shell pwd)/build
-LDFLAGS=\
-	-X $(VERSION_PKG).AppVersion=${BUILD_VERSION} \
-	-extldflags=-static -w -s
+LDFLAGS_COMMON=-X $(VERSION_PKG).AppVersion=${BUILD_VERSION}
+LDFLAGS_PROD=$(LDFLAGS_COMMON) -extldflags=-static -w -s
+LDFLAGS_DEBUG=$(LDFLAGS_COMMON)
+GCFLAGS_COMMON =
+GCFLAGS_PROD = $(GCFLAGS_COMMON)
+GCFLAGS_DEBUG = $(GCFLAGS_COMMON) all=-N -l
 
 BINARY_NAME=simple-registry
 ARCHITECTURES=x86-64 arm64
 GO_SOURCE=$(wildcard *.go)
 BINARIES=$(foreach ARCH, ${ARCHITECTURES}, ${BUILD_DIR}/${BINARY_NAME}.${BUILD_VERSION}.${ARCH})
-BINARIES_UPX=$(foreach BINARY, ${BINARIES}, ${BINARY}.upx)
 
 CONTAINER_TOOL ?= podman
 PLATFORMS ?= linux/arm64,linux/amd64
 IMG ?= ${BINARY_NAME}:latest
+# Derive debug image tag
+IMG_NAME := $(word 1,$(subst :, ,$(IMG)))
+IMG_TAG  := $(or $(word 2,$(subst :, ,$(IMG))),latest)
+ifeq ($(IMG_TAG),latest)
+IMG_DEBUG := $(IMG_NAME):debug
+else
+IMG_DEBUG := $(IMG_NAME):$(IMG_TAG)-debug
+endif
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -79,13 +89,21 @@ clean: ## Remove build directory.
 	go clean ; \
 	rm -rf "${BUILD_DIR}"
 
-.PHONE: container_clean
-container_clean: ## Remove container images.
+.PHONY: container-clean-prod
+container-clean-prod:
 	-$(CONTAINER_TOOL) rmi $(IMG)
 	-$(CONTAINER_TOOL) manifest rm $(IMG)
 
+.PHONY: container-clean-debug
+container-clean-debug:
+	-$(CONTAINER_TOOL) rmi $(IMG_DEBUG)
+	-$(CONTAINER_TOOL) manifest rm $(IMG_DEBUG)
+
+.PHONY: container-clean
+container-clean: container-clean-prod container-clean-debug  ## Remove container images.
+
 .PHONY: mrproper
-mrproper: clean ## Remove all generated files.
+mrproper: clean container-clean ## Remove all generated files.
 	rm -rf "${LOCALBIN}"
 
 
@@ -132,20 +150,32 @@ cover: ${BUILD_DIR}/cover.txt ${BUILD_DIR}/cover.html ## Generate coverture repo
 .PHONY: build
 build: ${BINARIES} ## Build project binary.
 
-.PHONY: container
-container: container_clean ${GO_SOURCE} ## Build container images
+.PHONY: container-prod
+container-prod: container-clean-prod ${GO_SOURCE}
 	$(CONTAINER_TOOL) build \
+		--target prod \
 		--manifest $(IMG) \
 		--platform=$(PLATFORMS) \
-		--build-arg="LDFLAGS=${LDFLAGS}" \
+		--build-arg="GCFLAGS=${GCFLAGS_PROD}" \
+		--build-arg="LDFLAGS=${LDFLAGS_PROD}" \
 		--build-arg="TARGETBIN=$(BINARY_NAME)" \
+		--build-arg="BUILD_TYPE=prod" \
 		-f Dockerfile .
 
-.PHONY: publish
-publish: container ## Publish container images
-	$(CONTAINER_TOOL) manifest push \
-		--all \
-		$(IMG)
+.PHONY: container-debug
+container-debug: container-clean-debug ${GO_SOURCE}
+	$(CONTAINER_TOOL) build \
+		--target debug \
+		--manifest $(IMG_DEBUG) \
+		--platform=$(PLATFORMS) \
+		--build-arg="GCFLAGS=${GCFLAGS_DEBUG}" \
+		--build-arg="LDFLAGS=${LDFLAGS_DEBUG}" \
+		--build-arg="TARGETBIN=$(BINARY_NAME)" \
+		--build-arg="BUILD_TYPE=debug" \
+		-f Dockerfile .
+
+.PHONY: container
+container: container-prod container-debug ## Build both prod and debug images.
 
 .PHONY: all
 all: | clean test build ## Execute all tipical targets before publish.
@@ -184,8 +214,14 @@ test: test-cyclo test-misspell test-go ## Execute all tests.
 
 ##@ Release
 
-%.upx: %
-	upx --best --lzma --no-progress -o $@ $(patsubst %.upx,%,$@)
+.PHONY: publish-prod
+publish-prod: container-prod
+	$(CONTAINER_TOOL) manifest push --all $(IMG)
 
-.PHONY: upx
-upx: ${BINARIES_UPX} ## Compress project binaries with UPX.
+.PHONY: publish-debug
+publish-debug: container-debug
+	$(CONTAINER_TOOL) manifest push --all $(IMG_DEBUG)
+
+.PHONY: publish
+publish: publish-prod publish-debug ## Publish container images
+
