@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"iter"
 	"time"
@@ -70,8 +71,14 @@ func markManifest(
 	}
 	defer r.Close()
 
+	payload, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	r.Close()
+
 	var raw map[string]any
-	if err := json.NewDecoder(r).Decode(&raw); err != nil {
+	if err := json.Unmarshal(payload, &raw); err != nil {
 		return err
 	}
 
@@ -82,14 +89,13 @@ func markManifest(
 	case registry.MediaTypeOCIImageManifest,
 		registry.MediaTypeDockerImageManifest:
 
-		data, err := json.Marshal(raw)
-		if err != nil {
+		var manifest registry.ImageManifest
+		if err := json.Unmarshal(payload, &manifest); err != nil {
 			return err
 		}
 
-		var manifest registry.ImageManifest
-		if err := json.Unmarshal(data, &manifest); err != nil {
-			return err
+		if manifest.Config.Digest != "" {
+			seenBlobs.Add(manifest.Config.Digest)
 		}
 
 		for _, layer := range manifest.Layers {
@@ -99,13 +105,8 @@ func markManifest(
 	case registry.MediaTypeOCIImageIndex,
 		registry.MediaTypeDockerManifestList:
 
-		data, err := json.Marshal(raw)
-		if err != nil {
-			return err
-		}
-
 		var index registry.ImageIndexManifest
-		if err := json.Unmarshal(data, &index); err != nil {
+		if err := json.Unmarshal(payload, &index); err != nil {
 			return err
 		}
 
