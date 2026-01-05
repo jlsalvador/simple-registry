@@ -2,6 +2,7 @@ package registry
 
 const MediaTypeOCIImageManifest = "application/vnd.oci.image.manifest.v1+json"
 const MediaTypeOCIImageConfig = "application/vnd.oci.image.config.v1+json"
+const MediaTypeDockerImageManifestV1 = "application/vnd.docker.distribution.manifest.v1+json"
 const MediaTypeDockerImageManifest = "application/vnd.docker.distribution.manifest.v2+json"
 const MediaTypeOCIImageIndex = "application/vnd.oci.image.index.v1+json"
 const MediaTypeDockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
@@ -149,4 +150,18 @@ type ImageManifest struct {
 	// This OPTIONAL property contains arbitrary metadata for the image manifest.
 	// This OPTIONAL property MUST use the annotation rules.
 	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+// https://github.com/openshift/containers-image/blob/7f7c399d0a032aee02d0a9fb056e85a0e721fc79/manifest/docker_schema1.go#L27
+type DockerManifestV1 struct {
+	Name         string `json:"name"`
+	Tag          string `json:"tag"`
+	Architecture string `json:"architecture"`
+	FSLayers     []struct {
+		BlobSum string `json:"blobSum"`
+	} `json:"fsLayers"`
+	History []struct {
+		V1Compatibility string `json:"v1Compatibility"`
+	} `json:"history"`
+	SchemaVersion int `json:"schemaVersion"`
 }

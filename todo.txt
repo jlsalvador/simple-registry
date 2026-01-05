@@ -18,6 +18,7 @@ x (A) 2025-12-30 2025-12-30 +data.ReferrersGet must return iter of referrers, no
 x (A) 2025-12-30 2025-12-30 +data ManifestsList returns duplicated digests. @debt @todo
 x (B) 2025-12-30 2025-12-17 +gc on demand. @todo
 x (A) 2026-01-05 2026-01-05 disable proxy pull through +cache for +gc. @todo
+x (A) 2026-01-05 2026-01-05 add docker schema v1 support for +gc. @todo
 (A) 2026-01-05 ignore ENOENT errors for +gc because pull through +cache. @todo
 (B) 2026-01-05 +data storage must NOT return http errors. @todo
 (B) 2025-12-20 add +yaml manifest field "enabled". @todo

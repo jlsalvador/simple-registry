@@ -86,6 +86,12 @@ func markManifest(
 		return err
 	}
 
+	_, hasSignatures := raw["signatures"]
+	_, hasHistory := raw["history"]
+	if hasSignatures || hasHistory {
+		raw["mediaType"] = registry.MediaTypeDockerImageManifestV1
+	}
+
 	mediaType, _ := raw["mediaType"].(string)
 
 	switch mediaType {
@@ -117,6 +123,19 @@ func markManifest(
 		for _, m := range index.Manifests {
 			if err := markManifest(cfg, repo, m.Digest, seenManifests, seenBlobs); err != nil {
 				return err
+			}
+		}
+
+	case registry.MediaTypeDockerImageManifestV1:
+
+		var manifest registry.DockerManifestV1
+		if err := json.Unmarshal(payload, &manifest); err != nil {
+			return err
+		}
+
+		for _, layer := range manifest.FSLayers {
+			if layer.BlobSum != "" {
+				seenBlobs.Add(layer.BlobSum)
 			}
 		}
 
