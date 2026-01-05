@@ -67,6 +67,10 @@ func markManifest(
 
 	r, _, _, err := withoutProxy(cfg.Data).ManifestGet(repo, digest)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// Manifest file not found, maybe because belongs to a proxy.
+			return nil
+		}
 		return err
 	}
 	defer r.Close()
