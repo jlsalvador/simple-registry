@@ -13,12 +13,12 @@ import (
 // Blobs
 
 func (s *ProxyDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, size int64, err error) {
-	if s.ds == nil {
+	if s.Next == nil {
 		return nil, -1, ErrDataStorageNotInitialized
 	}
 
 	// Try local first.
-	r, size, err = s.ds.BlobsGet(repo, digest)
+	r, size, err = s.Next.BlobsGet(repo, digest)
 	if err == nil {
 		return r, size, nil
 	}
@@ -41,19 +41,19 @@ func (s *ProxyDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, size 
 	defer upstreamReader.Close()
 
 	// Store locally.
-	uuid, err := s.ds.BlobsUploadCreate(repo)
+	uuid, err := s.Next.BlobsUploadCreate(repo)
 	if err != nil {
 		return nil, -1, err
 	}
-	if err := s.ds.BlobsUploadWrite(repo, uuid, upstreamReader, -1); err != nil {
+	if err := s.Next.BlobsUploadWrite(repo, uuid, upstreamReader, -1); err != nil {
 		return nil, -1, err
 	}
-	if err := s.ds.BlobsUploadCommit(repo, uuid, digest); err != nil {
+	if err := s.Next.BlobsUploadCommit(repo, uuid, digest); err != nil {
 		return nil, -1, err
 	}
 
 	// Read back from local.
-	return s.ds.BlobsGet(repo, digest)
+	return s.Next.BlobsGet(repo, digest)
 }
 
 // Manifests
@@ -64,7 +64,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	digest string,
 	err error,
 ) {
-	if s.ds == nil {
+	if s.Next == nil {
 		return nil, -1, "", ErrDataStorageNotInitialized
 	}
 
@@ -82,16 +82,15 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	}
 
 	// Try to get from local.
-	r, size, digest, err = s.ds.ManifestGet(repo, reference)
-	if err == nil {
+	r, size, digest, err = s.Next.ManifestGet(repo, reference)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
+		return nil, -1, "", err
+	} else {
 		if upstreamDigest == "" || upstreamDigest == digest {
 			return r, size, digest, nil
 		}
 
 		_ = r.Close()
-	}
-	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
-		return nil, -1, "", err
 	}
 
 	// Local miss, check Proxy.
@@ -107,13 +106,13 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	defer upstreamReader.Close()
 
 	// Store locally.
-	newDigest, err := s.ds.ManifestPut(repo, reference, upstreamReader)
+	newDigest, err := s.Next.ManifestPut(repo, reference, upstreamReader)
 	if err != nil {
 		return nil, -1, "", err
 	}
 
 	// Read back from local.
-	return s.ds.ManifestGet(repo, newDigest)
+	return s.Next.ManifestGet(repo, newDigest)
 }
 
 // Referrers
@@ -122,12 +121,12 @@ func (s *ProxyDataStorage) ReferrersGet(
 	repo,
 	dgst string,
 ) (digests iter.Seq[string], err error) {
-	if s.ds == nil {
+	if s.Next == nil {
 		return nil, ErrDataStorageNotInitialized
 	}
 
 	// Try local first.
-	digests, err = s.ds.ReferrersGet(repo, dgst)
+	digests, err = s.Next.ReferrersGet(repo, dgst)
 	if err == nil {
 		return digests, nil
 	}
@@ -153,7 +152,7 @@ func (s *ProxyDataStorage) ReferrersGet(
 // Tags
 
 func (s *ProxyDataStorage) TagsList(repo string) ([]string, error) {
-	if s.ds == nil {
+	if s.Next == nil {
 		return nil, ErrDataStorageNotInitialized
 	}
 
@@ -167,5 +166,5 @@ func (s *ProxyDataStorage) TagsList(repo string) ([]string, error) {
 		// upstream failed, fallback to local.
 	}
 
-	return s.ds.TagsList(repo)
+	return s.Next.TagsList(repo)
 }

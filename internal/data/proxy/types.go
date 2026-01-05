@@ -15,7 +15,7 @@ type Proxy struct {
 }
 
 type ProxyDataStorage struct {
-	ds      data.DataStorage
+	Next    data.DataStorage
 	proxies []Proxy
 }
 

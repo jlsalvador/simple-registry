@@ -9,9 +9,24 @@ import (
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/internal/data"
+	"github.com/jlsalvador/simple-registry/internal/data/proxy"
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
+
+// withoutProxy will return the underlying [proxy.ProxyDataStorage.Next] if it
+// is a [proxy.ProxyDataStorage], otherwise it will return the same
+// [data.DataStorage].
+//
+// The reason for this function is to avoid mirroring upstream while we are
+// marking manifests and blobs.
+func withoutProxy(data data.DataStorage) data.DataStorage {
+	if d, ok := data.(*proxy.ProxyDataStorage); ok {
+		return d.Next
+	}
+	return data
+}
 
 func markManifestByReferrers(
 	cfg config.Config,
@@ -20,7 +35,7 @@ func markManifestByReferrers(
 	seenManifests mapset.MapSet,
 	seenBlobs mapset.MapSet,
 ) error {
-	referrers, err := cfg.Data.ReferrersGet(repo, digest)
+	referrers, err := withoutProxy(cfg.Data).ReferrersGet(repo, digest)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -49,7 +64,7 @@ func markManifest(
 	}
 	seenManifests.Add(digest)
 
-	r, _, _, err := cfg.Data.ManifestGet(repo, digest)
+	r, _, _, err := withoutProxy(cfg.Data).ManifestGet(repo, digest)
 	if err != nil {
 		return err
 	}
@@ -122,7 +137,7 @@ func collectRootManifests(
 ) (map[string][]string, error) {
 	roots := map[string][]string{}
 
-	repos, err := cfg.Data.RepositoriesList()
+	repos, err := withoutProxy(cfg.Data).RepositoriesList()
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +147,7 @@ func collectRootManifests(
 			// Because we are not delete untagged manifests, include all the
 			// manifests from this repo.
 
-			manifests, err := cfg.Data.ManifestsList(repo)
+			manifests, err := withoutProxy(cfg.Data).ManifestsList(repo)
 			if err != nil {
 				return nil, err
 			}
@@ -144,12 +159,12 @@ func collectRootManifests(
 
 		// We are going to delete untagged manifests, so only include the
 		// manifests that have tags.
-		tags, err := cfg.Data.TagsList(repo)
+		tags, err := withoutProxy(cfg.Data).TagsList(repo)
 		if err != nil {
 			return nil, err
 		}
 		for _, tag := range tags {
-			r, _, digest, err := cfg.Data.ManifestGet(repo, tag)
+			r, _, digest, err := withoutProxy(cfg.Data).ManifestGet(repo, tag)
 			if err != nil {
 				return nil, err
 			}
@@ -171,18 +186,18 @@ func sweepManifests(
 ) (deleted iter.Seq[string], err error) {
 	deletedSlice := []string{}
 
-	repos, err := cfg.Data.RepositoriesList()
+	repos, err := withoutProxy(cfg.Data).RepositoriesList()
 	if err != nil {
 		return nil, err
 	}
 	for _, repo := range repos {
-		digests, err := cfg.Data.ManifestsList(repo)
+		digests, err := withoutProxy(cfg.Data).ManifestsList(repo)
 		if err != nil {
 			return nil, err
 		}
 
 		for digest := range digests {
-			manifestLastAccess, err := cfg.Data.ManifestLastAccess(digest)
+			manifestLastAccess, err := withoutProxy(cfg.Data).ManifestLastAccess(digest)
 			if err != nil {
 				return nil, err
 			}
@@ -190,7 +205,7 @@ func sweepManifests(
 			if time.Since(manifestLastAccess) > lastAccess && !seenManifests.Contains(digest) {
 				deletedSlice = append(deletedSlice, digest)
 				if !dryRun {
-					if err := cfg.Data.ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					if err := withoutProxy(cfg.Data).ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
 						return nil, err
 					}
 				}
@@ -216,13 +231,13 @@ func sweepBlobs(
 ) (deleted iter.Seq[string], err error) {
 	deletedSlice := []string{}
 
-	blobs, err := cfg.Data.BlobsList()
+	blobs, err := withoutProxy(cfg.Data).BlobsList()
 	if err != nil {
 		return nil, err
 	}
 
 	for blob := range blobs {
-		blobLastAccess, err := cfg.Data.BlobLastAccess(blob)
+		blobLastAccess, err := withoutProxy(cfg.Data).BlobLastAccess(blob)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +245,7 @@ func sweepBlobs(
 		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
 			deletedSlice = append(deletedSlice, blob)
 			if !dryRun {
-				if err := cfg.Data.BlobsDelete("", blob); err != nil {
+				if err := withoutProxy(cfg.Data).BlobsDelete("", blob); err != nil {
 					return nil, err
 				}
 			}
