@@ -208,6 +208,10 @@ func collectRootManifests(
 		for _, tag := range tags {
 			r, _, digest, err := withoutProxy(cfg.Data).ManifestGet(repo, tag)
 			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					// Manifest file not found, maybe because belongs to a proxy.
+					continue
+				}
 				return nil, err
 			}
 			r.Close()
@@ -241,6 +245,10 @@ func sweepManifests(
 		for digest := range digests {
 			manifestLastAccess, err := withoutProxy(cfg.Data).ManifestLastAccess(digest)
 			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					// Manifest file not found, maybe because belongs to a proxy.
+					continue
+				}
 				return nil, err
 			}
 
@@ -281,13 +289,17 @@ func sweepBlobs(
 	for blob := range blobs {
 		blobLastAccess, err := withoutProxy(cfg.Data).BlobLastAccess(blob)
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				// Blob file not found, maybe because belongs to a proxy.
+				continue
+			}
 			return nil, err
 		}
 
 		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
 			deletedSlice = append(deletedSlice, blob)
 			if !dryRun {
-				if err := withoutProxy(cfg.Data).BlobsDelete("", blob); err != nil {
+				if err := withoutProxy(cfg.Data).BlobsDelete("", blob); err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return nil, err
 				}
 			}
