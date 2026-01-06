@@ -270,7 +270,7 @@ func (s *FilesystemDataStorage) ManifestsList(repo string) (digests iter.Seq[str
 		"_manifests",
 	)
 
-	digestsSet := mapset.NewMapSet()
+	digestsSet := mapset.NewMapSet[string]()
 
 	// 1. Revisions
 	revisions := filepath.Join(repoPath, "revisions")

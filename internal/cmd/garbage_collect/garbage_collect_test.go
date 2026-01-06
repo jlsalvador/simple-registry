@@ -11,6 +11,7 @@ import (
 	garbagecollect "github.com/jlsalvador/simple-registry/internal/cmd/garbage_collect"
 	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/pkg/digest"
+	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -254,7 +255,7 @@ func TestGarbageCollect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nDeletedManifests := len(slices.Collect(gotDeletedManifests))
+	nDeletedManifests := len(gotDeletedManifests)
 	wantDeletedManifests := 0 // None should be deleted as we are not deleting untagged manifests.
 	if nDeletedManifests != wantDeletedManifests {
 		t.Errorf("expected %d deleted manifests, got %d", wantDeletedManifests, nDeletedManifests)
@@ -266,17 +267,11 @@ func TestGarbageCollect(t *testing.T) {
 		len(blobs)-1+len(indexes)+len(attestations)+len(images),
 	)
 
-	gotDeletedBlobsSlice := slices.Collect(gotDeletedBlobs)
-	slices.Sort(gotDeletedBlobsSlice)
-	gotDeletedBlobsSlice = slices.Compact(gotDeletedBlobsSlice)
-
 	// Only the fourth blob should be deleted.
-	wantDeletedBlobs := []string{
-		blobs[3].Digest,
-	}
+	wantDeletedBlobs := mapset.NewMapSet[string]().Add(blobs[3].Digest)
 
-	if slices.Compare(gotDeletedBlobsSlice, wantDeletedBlobs) != 0 {
-		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobsSlice)
+	if !wantDeletedBlobs.Equal(gotDeletedBlobs) {
+		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobs)
 	}
 }
 
@@ -297,7 +292,7 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nDeletedManifests := len(slices.Collect(gotDeletedManifests))
+	nDeletedManifests := len(gotDeletedManifests)
 	wantDeletedManifests := len(indexes) - 1 + len(attestations) - 1 + len(images) - 1 // Only the last manifest has a tag.
 	if nDeletedManifests != wantDeletedManifests {
 		t.Errorf("expected %d deleted manifests, got %d", wantDeletedManifests, nDeletedManifests)
@@ -309,12 +304,8 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		4, // There are one blob, one index, one image, and one attestation.
 	)
 
-	gotDeletedBlobsSlice := slices.Collect(gotDeletedBlobs)
-	slices.Sort(gotDeletedBlobsSlice)
-	gotDeletedBlobsSlice = slices.Compact(gotDeletedBlobsSlice)
-
 	// All blobs and manifests except the last manifests should be deleted.
-	wantDeletedBlobs := []string{
+	wantDeletedBlobs := mapset.NewMapSet[string]().Add(
 		blobs[0].Digest,
 		blobs[1].Digest,
 		blobs[3].Digest,
@@ -324,9 +315,9 @@ func TestGarbageCollectUntaggedManifests(t *testing.T) {
 		images[1].Digest,
 		attestations[0].Digest,
 		attestations[1].Digest,
-	}
-	slices.Sort(wantDeletedBlobs)
-	if slices.Compare(gotDeletedBlobsSlice, wantDeletedBlobs) != 0 {
-		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobsSlice)
+	)
+
+	if !wantDeletedBlobs.Equal(gotDeletedBlobs) {
+		t.Errorf("expected %v, got %v", wantDeletedBlobs, gotDeletedBlobs)
 	}
 }

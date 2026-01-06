@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"iter"
 	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
@@ -15,6 +14,11 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
+
+type ManifestRef struct {
+	Repo   string
+	Digest string
+}
 
 // withoutProxy will return the underlying [proxy.ProxyDataStorage.Next] if it
 // is a [proxy.ProxyDataStorage], otherwise it will return the same
@@ -33,8 +37,8 @@ func markManifestByReferrers(
 	ds data.DataStorage,
 	repo string,
 	digest string,
-	seenManifests mapset.MapSet,
-	seenBlobs mapset.MapSet,
+	seenManifests mapset.MapSet[string],
+	seenBlobs mapset.MapSet[string],
 ) error {
 	referrers, err := ds.ReferrersGet(repo, digest)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -57,8 +61,8 @@ func markManifest(
 	ds data.DataStorage,
 	repo string,
 	digest string,
-	seenManifests mapset.MapSet,
-	seenBlobs mapset.MapSet,
+	seenManifests mapset.MapSet[string],
+	seenBlobs mapset.MapSet[string],
 ) error {
 	if seenManifests.Contains(digest) {
 		return nil
@@ -124,7 +128,7 @@ func markManifest(
 	return nil
 }
 
-func markImageManifest(payload []byte, seenBlobs mapset.MapSet) error {
+func markImageManifest(payload []byte, seenBlobs mapset.MapSet[string]) error {
 	var manifest registry.ImageManifest
 	if err := json.Unmarshal(payload, &manifest); err != nil {
 		return err
@@ -144,8 +148,8 @@ func markIndexManifest(
 	payload []byte,
 	ds data.DataStorage,
 	repo string,
-	seenManifests mapset.MapSet,
-	seenBlobs mapset.MapSet,
+	seenManifests mapset.MapSet[string],
+	seenBlobs mapset.MapSet[string],
 ) error {
 	var index registry.ImageIndexManifest
 	if err := json.Unmarshal(payload, &index); err != nil {
@@ -160,7 +164,7 @@ func markIndexManifest(
 	return nil
 }
 
-func markDockerV1Manifest(payload []byte, seenBlobs mapset.MapSet) error {
+func markDockerV1Manifest(payload []byte, seenBlobs mapset.MapSet[string]) error {
 	var manifest registry.DockerManifestV1
 	if err := json.Unmarshal(payload, &manifest); err != nil {
 		return err
@@ -182,7 +186,10 @@ func markDockerV1Manifest(payload []byte, seenBlobs mapset.MapSet) error {
 func collectRootManifests(
 	ds data.DataStorage,
 	deleteUntagged bool,
-) (map[string][]string, error) {
+) (
+	map[string][]string,
+	error,
+) {
 	roots := map[string][]string{}
 
 	repos, err := ds.RepositoriesList()
@@ -230,18 +237,21 @@ func collectRootManifests(
 	return roots, nil
 }
 
-func sweepManifests(
+func planSweepManifests(
 	ds data.DataStorage,
-	seenManifests mapset.MapSet,
-	dryRun bool,
+	seenManifests mapset.MapSet[string],
 	lastAccess time.Duration,
-) (deleted iter.Seq[string], err error) {
-	deletedSlice := []string{}
+) (
+	mapset.MapSet[ManifestRef],
+	error,
+) {
+	toDelete := mapset.NewMapSet[ManifestRef]()
 
 	repos, err := ds.RepositoriesList()
 	if err != nil {
 		return nil, err
 	}
+
 	for _, repo := range repos {
 		digests, err := ds.ManifestsList(repo)
 		if err != nil {
@@ -259,33 +269,24 @@ func sweepManifests(
 			}
 
 			if time.Since(manifestLastAccess) > lastAccess && !seenManifests.Contains(digest) {
-				deletedSlice = append(deletedSlice, digest)
-				if !dryRun {
-					if err := ds.ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
-						return nil, err
-					}
-				}
+				toDelete.Add(ManifestRef{repo, digest})
 			}
 		}
 	}
 
-	return func(yield func(string) bool) {
-		for _, digest := range deletedSlice {
-			if !yield(digest) {
-				return
-			}
-		}
-	}, nil
+	return toDelete, nil
 }
 
-func sweepBlobs(
+func planSweepBlobs(
 	ds data.DataStorage,
-	seenBlobs mapset.MapSet,
-	seenManifests mapset.MapSet,
-	dryRun bool,
+	seenBlobs mapset.MapSet[string],
+	seenManifests mapset.MapSet[string],
 	lastAccess time.Duration,
-) (deleted iter.Seq[string], err error) {
-	deletedSlice := []string{}
+) (
+	mapset.MapSet[string],
+	error,
+) {
+	toDelete := mapset.NewMapSet[string]()
 
 	blobs, err := ds.BlobsList()
 	if err != nil {
@@ -303,22 +304,11 @@ func sweepBlobs(
 		}
 
 		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
-			deletedSlice = append(deletedSlice, blob)
-			if !dryRun {
-				if err := ds.BlobsDelete("", blob); err != nil && !errors.Is(err, fs.ErrNotExist) {
-					return nil, err
-				}
-			}
+			toDelete.Add(blob)
 		}
 	}
 
-	return func(yield func(string) bool) {
-		for _, digest := range deletedSlice {
-			if !yield(digest) {
-				return
-			}
-		}
-	}, nil
+	return toDelete, nil
 }
 
 // GarbageCollect deletes unreferrenced blobs (includes manifests blobs).
@@ -328,44 +318,58 @@ func GarbageCollect(
 	lastAccess time.Duration,
 	deleteUntagged bool,
 ) (
-	deletedBlobs iter.Seq[string],
-	deletedManifests iter.Seq[string],
-	markedBlobs mapset.MapSet,
-	markedManifests mapset.MapSet,
-	err error,
+	mapset.MapSet[string],
+	mapset.MapSet[ManifestRef],
+	mapset.MapSet[string],
+	mapset.MapSet[string],
+	error,
 ) {
 	ds := withoutProxy(cfg.Data)
 
 	// Collect all the root manifests from all the repositories.
 	roots, err := collectRootManifests(ds, deleteUntagged)
 	if err != nil {
-		return
+		return nil, nil, nil, nil, err
 	}
 
 	// Mark all manifests and blobs that are referenced by the roots.
-	markedManifests = mapset.NewMapSet()
-	markedBlobs = mapset.NewMapSet()
+	markedManifests := mapset.NewMapSet[string]()
+	markedBlobs := mapset.NewMapSet[string]()
 	for repo, digests := range roots {
 		for _, d := range digests {
 			if err = markManifest(ds, repo, d, markedManifests, markedBlobs); err != nil {
-				return
+				return nil, nil, nil, nil, err
 			}
 		}
 	}
 
 	// Walk through all the manifests in the data store, and removes any that
 	// is not referenced and is older than the last access time.
-	deletedManifests, err = sweepManifests(ds, markedManifests, dryRun, lastAccess)
+	manifestsToDelete, err := planSweepManifests(ds, markedManifests, lastAccess)
 	if err != nil {
-		return
+		return nil, nil, nil, nil, err
 	}
 
 	// Walk through all the blobs in the data store, and removes any that is not
 	// referenced and is older than the last access time.
-	deletedBlobs, err = sweepBlobs(ds, markedBlobs, markedManifests, dryRun, lastAccess)
+	blobsToDelete, err := planSweepBlobs(ds, markedBlobs, markedManifests, lastAccess)
 	if err != nil {
-		return
+		return nil, nil, nil, nil, err
 	}
 
-	return deletedBlobs, deletedManifests, markedBlobs, markedManifests, nil
+	if !dryRun {
+		for m := range manifestsToDelete {
+			if err = ds.ManifestDelete(m.Repo, m.Digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return nil, nil, nil, nil, err
+			}
+		}
+
+		for blob := range blobsToDelete {
+			if err = ds.BlobsDelete("", blob); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return nil, nil, nil, nil, err
+			}
+		}
+	}
+
+	return blobsToDelete, manifestsToDelete, markedBlobs, markedManifests, nil
 }
