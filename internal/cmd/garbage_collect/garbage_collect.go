@@ -30,13 +30,13 @@ func withoutProxy(data data.DataStorage) data.DataStorage {
 }
 
 func markManifestByReferrers(
-	cfg config.Config,
+	ds data.DataStorage,
 	repo string,
 	digest string,
 	seenManifests mapset.MapSet,
 	seenBlobs mapset.MapSet,
 ) error {
-	referrers, err := withoutProxy(cfg.Data).ReferrersGet(repo, digest)
+	referrers, err := ds.ReferrersGet(repo, digest)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -44,7 +44,7 @@ func markManifestByReferrers(
 		return nil
 	}
 	for ref := range referrers {
-		if err := markManifest(cfg, repo, ref, seenManifests, seenBlobs); err != nil {
+		if err := markManifest(ds, repo, ref, seenManifests, seenBlobs); err != nil {
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func markManifestByReferrers(
 // markManifest marks a manifest as seen and recursively marks all manifests and
 // blobs it references.
 func markManifest(
-	cfg config.Config,
+	ds data.DataStorage,
 	repo string,
 	digest string,
 	seenManifests mapset.MapSet,
@@ -65,7 +65,7 @@ func markManifest(
 	}
 	seenManifests.Add(digest)
 
-	r, _, _, err := withoutProxy(cfg.Data).ManifestGet(repo, digest)
+	r, _, _, err := ds.ManifestGet(repo, digest)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			// Manifest file not found, maybe because belongs to a proxy.
@@ -104,7 +104,7 @@ func markManifest(
 
 	case registry.MediaTypeOCIImageIndex,
 		registry.MediaTypeDockerManifestList:
-		if err := markIndexManifest(payload, cfg, repo, seenManifests, seenBlobs); err != nil {
+		if err := markIndexManifest(payload, ds, repo, seenManifests, seenBlobs); err != nil {
 			return err
 		}
 
@@ -117,7 +117,7 @@ func markManifest(
 		return fmt.Errorf("unsupported media type: %s", mediaType)
 	}
 
-	if err := markManifestByReferrers(cfg, repo, digest, seenManifests, seenBlobs); err != nil {
+	if err := markManifestByReferrers(ds, repo, digest, seenManifests, seenBlobs); err != nil {
 		return err
 	}
 
@@ -140,14 +140,20 @@ func markImageManifest(payload []byte, seenBlobs mapset.MapSet) error {
 	return nil
 }
 
-func markIndexManifest(payload []byte, cfg config.Config, repo string, seenManifests mapset.MapSet, seenBlobs mapset.MapSet) error {
+func markIndexManifest(
+	payload []byte,
+	ds data.DataStorage,
+	repo string,
+	seenManifests mapset.MapSet,
+	seenBlobs mapset.MapSet,
+) error {
 	var index registry.ImageIndexManifest
 	if err := json.Unmarshal(payload, &index); err != nil {
 		return err
 	}
 
 	for _, m := range index.Manifests {
-		if err := markManifest(cfg, repo, m.Digest, seenManifests, seenBlobs); err != nil {
+		if err := markManifest(ds, repo, m.Digest, seenManifests, seenBlobs); err != nil {
 			return err
 		}
 	}
@@ -174,12 +180,12 @@ func markDockerV1Manifest(payload []byte, seenBlobs mapset.MapSet) error {
 // If `deleteUntagged` is true, only root manifests that have at least one tag
 // are included.
 func collectRootManifests(
-	cfg config.Config,
+	ds data.DataStorage,
 	deleteUntagged bool,
 ) (map[string][]string, error) {
 	roots := map[string][]string{}
 
-	repos, err := withoutProxy(cfg.Data).RepositoriesList()
+	repos, err := ds.RepositoriesList()
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +195,7 @@ func collectRootManifests(
 			// Because we are not delete untagged manifests, include all the
 			// manifests from this repo.
 
-			manifests, err := withoutProxy(cfg.Data).ManifestsList(repo)
+			manifests, err := ds.ManifestsList(repo)
 			if err != nil {
 				return nil, err
 			}
@@ -201,12 +207,12 @@ func collectRootManifests(
 
 		// We are going to delete untagged manifests, so only include the
 		// manifests that have tags.
-		tags, err := withoutProxy(cfg.Data).TagsList(repo)
+		tags, err := ds.TagsList(repo)
 		if err != nil {
 			return nil, err
 		}
 		for _, tag := range tags {
-			r, _, digest, err := withoutProxy(cfg.Data).ManifestGet(repo, tag)
+			r, _, digest, err := ds.ManifestGet(repo, tag)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					// Manifest file not found, maybe because belongs to a proxy.
@@ -225,25 +231,25 @@ func collectRootManifests(
 }
 
 func sweepManifests(
-	cfg config.Config,
+	ds data.DataStorage,
 	seenManifests mapset.MapSet,
 	dryRun bool,
 	lastAccess time.Duration,
 ) (deleted iter.Seq[string], err error) {
 	deletedSlice := []string{}
 
-	repos, err := withoutProxy(cfg.Data).RepositoriesList()
+	repos, err := ds.RepositoriesList()
 	if err != nil {
 		return nil, err
 	}
 	for _, repo := range repos {
-		digests, err := withoutProxy(cfg.Data).ManifestsList(repo)
+		digests, err := ds.ManifestsList(repo)
 		if err != nil {
 			return nil, err
 		}
 
 		for digest := range digests {
-			manifestLastAccess, err := withoutProxy(cfg.Data).ManifestLastAccess(digest)
+			manifestLastAccess, err := ds.ManifestLastAccess(digest)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					// Manifest file not found, maybe because belongs to a proxy.
@@ -255,7 +261,7 @@ func sweepManifests(
 			if time.Since(manifestLastAccess) > lastAccess && !seenManifests.Contains(digest) {
 				deletedSlice = append(deletedSlice, digest)
 				if !dryRun {
-					if err := withoutProxy(cfg.Data).ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					if err := ds.ManifestDelete(repo, digest); err != nil && !errors.Is(err, fs.ErrNotExist) {
 						return nil, err
 					}
 				}
@@ -273,7 +279,7 @@ func sweepManifests(
 }
 
 func sweepBlobs(
-	cfg config.Config,
+	ds data.DataStorage,
 	seenBlobs mapset.MapSet,
 	seenManifests mapset.MapSet,
 	dryRun bool,
@@ -281,13 +287,13 @@ func sweepBlobs(
 ) (deleted iter.Seq[string], err error) {
 	deletedSlice := []string{}
 
-	blobs, err := withoutProxy(cfg.Data).BlobsList()
+	blobs, err := ds.BlobsList()
 	if err != nil {
 		return nil, err
 	}
 
 	for blob := range blobs {
-		blobLastAccess, err := withoutProxy(cfg.Data).BlobLastAccess(blob)
+		blobLastAccess, err := ds.BlobLastAccess(blob)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				// Blob file not found, maybe because belongs to a proxy.
@@ -299,7 +305,7 @@ func sweepBlobs(
 		if time.Since(blobLastAccess) > lastAccess && !seenBlobs.Contains(blob) && !seenManifests.Contains(blob) {
 			deletedSlice = append(deletedSlice, blob)
 			if !dryRun {
-				if err := withoutProxy(cfg.Data).BlobsDelete("", blob); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				if err := ds.BlobsDelete("", blob); err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return nil, err
 				}
 			}
@@ -328,8 +334,10 @@ func GarbageCollect(
 	markedManifests mapset.MapSet,
 	err error,
 ) {
+	ds := withoutProxy(cfg.Data)
+
 	// Collect all the root manifests from all the repositories.
-	roots, err := collectRootManifests(cfg, deleteUntagged)
+	roots, err := collectRootManifests(ds, deleteUntagged)
 	if err != nil {
 		return
 	}
@@ -339,7 +347,7 @@ func GarbageCollect(
 	markedBlobs = mapset.NewMapSet()
 	for repo, digests := range roots {
 		for _, d := range digests {
-			if err = markManifest(cfg, repo, d, markedManifests, markedBlobs); err != nil {
+			if err = markManifest(ds, repo, d, markedManifests, markedBlobs); err != nil {
 				return
 			}
 		}
@@ -347,14 +355,14 @@ func GarbageCollect(
 
 	// Walk through all the manifests in the data store, and removes any that
 	// is not referenced and is older than the last access time.
-	deletedManifests, err = sweepManifests(cfg, markedManifests, dryRun, lastAccess)
+	deletedManifests, err = sweepManifests(ds, markedManifests, dryRun, lastAccess)
 	if err != nil {
 		return
 	}
 
 	// Walk through all the blobs in the data store, and removes any that is not
 	// referenced and is older than the last access time.
-	deletedBlobs, err = sweepBlobs(cfg, markedBlobs, markedManifests, dryRun, lastAccess)
+	deletedBlobs, err = sweepBlobs(ds, markedBlobs, markedManifests, dryRun, lastAccess)
 	if err != nil {
 		return
 	}
