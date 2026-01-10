@@ -12,6 +12,7 @@ and pull-through caching.
 - **🛂 Role-Based Access Control (RBAC):** Per repository, action, and role.
 - **📦 Pull-through Caching:** Configurable on-demand caching from external registries.
 - **🔒 Flexible Authentication:** Anonymous, Basic Auth, and tokens.
+- **♻️ Garbage Collection:** On-demand cleanup of unused layers.
 - **🌀 Stateless & Scalable:** Horizontal scaling backed by shared storage.
 
 ---
