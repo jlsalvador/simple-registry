@@ -85,7 +85,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	r, size, digest, err = s.Next.ManifestGet(repo, reference)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
 		return nil, -1, "", err
-	} else {
+	} else if r != nil {
 		if upstreamDigest == "" || upstreamDigest == digest {
 			return r, size, digest, nil
 		}
