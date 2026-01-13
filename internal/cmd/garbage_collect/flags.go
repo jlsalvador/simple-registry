@@ -3,7 +3,6 @@ package garbagecollect
 import (
 	"flag"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,24 +20,14 @@ type Flags struct {
 	LastAccess     time.Duration
 }
 
-// getBool parses a string value as a boolean.
-// If the parsing fails, it returns false.
-func getBool(val string) bool {
-	if val, err := strconv.ParseBool(val); err != nil {
-		return false
-	} else {
-		return val
-	}
-}
-
 func parseFlags() (flags Flags, err error) {
 	flagSet := flag.NewFlagSet("", flag.ExitOnError)
 
 	flagSet.StringVar(&flags.DataDir, "datadir", common.GetEnv(cmd.ENV_PREFIX+"DATADIR", "./data"), "Data directory")
 	flagSet.Var(&flags.CfgDir, "cfgdir", "Directory with YAML configuration files\nCould be specified multiple times")
 
-	flagSet.BoolVar(&flags.DeleteUntagged, "delete-untagged", getBool(common.GetEnv(cmd.ENV_PREFIX+"DELETE_UNTAGGED", "false")), "If set, the command will delete manifests that are not currently referenced by a tag.")
-	flagSet.BoolVar(&flags.DryRun, "dryrun", getBool(common.GetEnv(cmd.ENV_PREFIX+"DRYRUN", "false")), "If set, the command will not actually remove any blobs.")
+	flagSet.BoolVar(&flags.DeleteUntagged, "delete-untagged", common.GetBool(common.GetEnv(cmd.ENV_PREFIX+"DELETE_UNTAGGED", "false")), "If set, the command will delete manifests that are not currently referenced by a tag.")
+	flagSet.BoolVar(&flags.DryRun, "dryrun", common.GetBool(common.GetEnv(cmd.ENV_PREFIX+"DRYRUN", "false")), "If set, the command will not actually remove any blobs.")
 
 	lastAccess := flagSet.String("last-access", common.GetEnv(cmd.ENV_PREFIX+"LAST_ACCESS", "24h"), "The time since the last access to a file before it is considered garbage.\nFormat: 1h, 2m, 3s, etc. Default: 24h.")
 

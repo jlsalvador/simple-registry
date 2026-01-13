@@ -41,3 +41,38 @@ func TestGetEnv(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestGetBool(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		val  string
+		want bool
+	}{
+		{"true lower case", "true", true},
+		{"true upper case", "TRUE", true},
+		{"true mixed cases", "tRuE", true},
+		{"true single char", "t", true},
+		{"true with leading space", " t", true},
+		{"true with trailing space", " t ", true},
+		{"true with trailing space", "t ", true},
+		{"true as 1", "1", true},
+		{"false lower case", "false", false},
+		{"false upper case", "FALSE", false},
+		{"false mixed case", "fAlSe", false},
+		{"false single case", "f", false},
+		{"false with leading space", " f", false},
+		{"false with trailing space", " f ", false},
+		{"false with trailing space", "f ", false},
+		{"false as 0", "0", false},
+		{"empty", "f", false},
+		{"non-boolean value", "abc", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := common.GetBool(tt.val); got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

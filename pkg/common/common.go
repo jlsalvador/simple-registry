@@ -14,11 +14,27 @@
 
 package common
 
-import "os"
+import (
+	"os"
+	"strconv"
+	"strings"
+)
 
 func GetEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
 	}
 	return fallback
+}
+
+// GetBool parses a string value as a boolean.
+// If the parsing fails, it returns false.
+func GetBool(val string) bool {
+	val = strings.TrimSpace(val)
+	val = strings.ToLower(val)
+	if val, err := strconv.ParseBool(val); err != nil {
+		return false
+	} else {
+		return val
+	}
 }
