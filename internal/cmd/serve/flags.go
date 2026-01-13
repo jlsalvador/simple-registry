@@ -22,6 +22,8 @@ type Flags struct {
 
 	CertFile string
 	KeyFile  string
+
+	WebUI bool
 }
 
 func parseFlags() (flags Flags, err error) {
@@ -37,6 +39,8 @@ func parseFlags() (flags Flags, err error) {
 
 	flagSet.StringVar(&flags.CertFile, "certfile", common.GetEnv(cmd.ENV_PREFIX+"CERTFILE", ""), "TLS certificate file\nEnables HTTPS")
 	flagSet.StringVar(&flags.KeyFile, "keyfile", common.GetEnv(cmd.ENV_PREFIX+"KEYFILE", ""), "TLS key file")
+
+	flagSet.BoolVar(&flags.WebUI, "webui", common.GetBool(common.GetEnv(cmd.ENV_PREFIX+"WEBUI", "false")), "Enable web UI")
 
 	if err = flagSet.Parse(os.Args[2:]); err != nil {
 		return
