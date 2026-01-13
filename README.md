@@ -5,7 +5,7 @@ and pull-through caching.
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
 - **🎖️ OCI Native:** Implements the [OCI Distribution Specification v1.1.1][oci-spec].
 - **🪶 Lightweight:** Low memory footprint and minimal dependencies.
