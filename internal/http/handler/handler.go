@@ -138,6 +138,14 @@ func (m *ServeMux) registerRoutes() {
 		),
 	}
 
+	if m.cfg.IsWebUIEnabled {
+		routes = append(routes, route.NewRoute(
+			http.MethodGet,
+			"^/web",
+			m.Web,
+		))
+	}
+
 	m.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		allowed := map[string]struct{}{}
 
