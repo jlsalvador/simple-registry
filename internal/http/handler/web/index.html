@@ -418,6 +418,7 @@
     <div id="manifestModal" class="modal-backdrop">
         <div class="modal-content">
             <div class="modal-header">
+                <span id="modalBack"></span>
                 <h2 id="modalTitle">Manifest Explorer</h2>
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
@@ -431,6 +432,7 @@
         let authHeader = null;
         let isMockMode = false;
         let currentRepoName = '';
+        let modalStack = [];
 
         // === 1. Connection & Repo Listing ===
         async function connectRegistry() {
@@ -504,6 +506,10 @@
 
         // This function now handles both Tags and Digests
         async function getManifest(reference, isDigest = false) {
+            if (modalStack.length === 0 || modalStack.at(-1) !== reference) {
+                modalStack.push(reference);
+            }
+
             openModal();
             const modalBody = document.getElementById('modalBody');
             const modalTitle = document.getElementById('modalTitle');
@@ -735,12 +741,29 @@
 
         // Modal
         const modal = document.getElementById('manifestModal');
-        function openModal() { modal.style.display = "flex"; }
-        function closeModal() { modal.style.display = "none"; }
+        function openModal() {
+            document.getElementById('modalBack').innerHTML = renderBackButton();
+            modal.style.display = "flex";
+        }
+        function closeModal() {
+            modalStack = [];
+            modal.style.display = "none";
+        }
         window.onclick = function (event) { if (event.target == modal) closeModal(); }
         function toggleRawJson() {
             const el = document.getElementById('rawJson');
             el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function renderBackButton() {
+            if (modalStack.length < 2) return '';
+            return `<button class="small-btn secondary" onclick="goBack()">&larr; Back</button>`;
+        }
+
+        function goBack() {
+            modalStack.pop();
+            const prev = modalStack.pop();
+            getManifest(prev, prev.startsWith('sha256:'));
         }
 
         // === Mock Data ===
