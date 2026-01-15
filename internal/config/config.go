@@ -13,7 +13,7 @@ import (
 )
 
 type Config struct {
-	IsWebUIEnabled  bool
+	IsUIEnabled     bool
 	WWWAuthenticate string
 	Rbac            rbac.Engine
 	Data            data.DataStorage

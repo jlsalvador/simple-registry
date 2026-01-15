@@ -39,7 +39,7 @@ func CmdFn() error {
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
-	cfg.IsWebUIEnabled = flags.WebUI
+	cfg.IsUIEnabled = flags.UI
 
 	h := handler.NewHandler(*cfg)
 
