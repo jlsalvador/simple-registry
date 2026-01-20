@@ -35,6 +35,9 @@ func getContentType(manifest []byte) string {
 	if err := json.Unmarshal(manifest, &aux); err != nil {
 		return "application/vnd.oci.image.manifest.v1+json"
 	}
+	if aux.MediaType == "" {
+		return "application/vnd.oci.image.manifest.v1+json"
+	}
 	return aux.MediaType
 }
 
