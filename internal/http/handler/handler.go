@@ -144,6 +144,12 @@ func (m *ServeMux) registerRoutes() {
 			"^/ui",
 			m.UI,
 		))
+
+		routes = append(routes, route.NewRoute(
+			http.MethodGet,
+			"^/?$",
+			m.RedirectToUI,
+		))
 	}
 
 	m.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -9,6 +9,10 @@ import (
 //go:embed ui/*
 var uiFS embed.FS
 
+func (m *ServeMux) RedirectToUI(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/ui", http.StatusSeeOther)
+}
+
 func (m *ServeMux) UI(w http.ResponseWriter, r *http.Request) {
 	// 1. Clean the path to match the embed FS structure.
 	// If the handler is served at "/ui/", we need to be careful with the prefix.
