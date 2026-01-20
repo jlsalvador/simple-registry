@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCI Registry Explorer</title>
+    <link rel="icon" type="image/x-icon" href="/ui/favicon.ico">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-code: #1e293b;
+
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-tertiary: #94a3b8;
+            --text-inverse: #f8fafc;
+
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-code: #0c1220;
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --text-inverse: #0f172a;
+
+            --border: #334155;
+            --border-hover: #475569;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: var(--transition);
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-title .icon {
+            font-size: 1.5rem;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-hover);
+        }
+
+        .theme-toggle .icon {
+            font-size: 1.25rem;
+        }
+
+        /* Loader */
+        .loader {
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Main */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Panel */
+        .panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .panel.toolbar {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto auto;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .panel.toolbar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Form Elements */
+        input,
+        select {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Buttons */
+        button {
+            padding: 0.625rem 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        button.primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        button.success {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        button.success:hover {
+            background: var(--success-hover);
+        }
+
+        button.small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        /* Checkbox */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* Error */
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: start;
+            gap: 0.75rem;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .breadcrumb button {
+            border: none;
+            background: none;
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            font-weight: 500;
+        }
+
+        .breadcrumb button:hover {
+            background: var(--bg-secondary);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .breadcrumb .separator {
+            color: var(--text-tertiary);
+        }
+
+        .breadcrumb strong {
+            color: var(--text-primary);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: var(--radius-lg);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .badge.blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .badge.green {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .badge.gray {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            text-align: left;
+            background: var(--bg-tertiary);
+            padding: 0.875rem 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        th:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        th.sortable::after {
+            content: " ↕";
+            opacity: 0.3;
+        }
+
+        th.asc::after {
+            content: " ↑";
+            opacity: 1;
+        }
+
+        th.desc::after {
+            content: " ↓";
+            opacity: 1;
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        th.size,
+        td.size {
+            text-align: right;
+        }
+
+        th.action-col,
+        td.action-col {
+            text-align: center;
+            width: 120px;
+        }
+
+        /* Digest */
+        .digest-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .digest-text {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        a.digest-link {
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        a.digest-link:hover {
+            text-decoration: underline;
+        }
+
+        .copy-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: var(--transition);
+            border-radius: var(--radius-sm);
+        }
+
+        .copy-btn:hover {
+            opacity: 1;
+            background: var(--bg-secondary);
+            transform: scale(1.05);
+            box-shadow: none;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--bg-tertiary);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .code-block code {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+        }
+
+        /* Details */
+        details {
+            margin-top: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+        }
+
+        details summary {
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: 500;
+            user-select: none;
+        }
+
+        details[open] summary {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        pre {
+            background: var(--bg-code);
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            overflow: auto;
+            font-size: 0.8125rem;
+            max-height: 500px;
+            margin-top: 0.75rem;
+            line-height: 1.6;
+        }
+
+        /* Config Panel */
+        .config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .config-item strong {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .config-item span {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        /* Lists */
+        .env-list,
+        .label-list {
+            list-style: none;
+            margin-top: 0.75rem;
+        }
+
+        .env-list li,
+        .label-list li {
+            padding: 0.5rem;
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.8125rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .env-list li:last-child,
+        .label-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* Panel Title */
+        .panel-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Manifest Header */
+        .manifest-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .manifest-title h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .manifest-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        /* Loading State */
+        .loading-state {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        /* Utility */
+        .monospace {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+        }
+
+        .text-muted {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .text-small {
+            font-size: 0.8125rem;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--bg-primary);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            font-size: 0.875rem;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .toast.toast-success {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        [data-theme="dark"] .toast.toast-success {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .toast.toast-error {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        [data-theme="dark"] .toast.toast-error {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .toast {
+                bottom: 1rem;
+                right: 1rem;
+                left: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body data-theme="light">
+    <header>
+        <div class="header-left">
+            <div class="header-title">
+                <span class="icon">📦</span>
+                <span>OCI Registry Explorer</span>
+            </div>
+            <div id="global-loader" class="loader" style="display: none;"></div>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+            <span class="icon" id="theme-icon">🌙</span>
+        </button>
+    </header>
+
+    <main>
+        <div class="panel toolbar">
+            <input id="registry" value="http://localhost:5000" placeholder="https://registry.example.com">
+            <input id="username" placeholder="Username (optional)">
+            <input id="password" type="password" placeholder="Password / Token">
+            <button onclick="manualConnect()" class="primary">🔌 Connect</button>
+            <label class="checkbox-label">
+                <input type="checkbox" id="remember">
+                <span>Remember</span>
+            </label>
+        </div>
+
+        <div id="error"></div>
+        <div id="breadcrumb" class="breadcrumb" style="display: none;"></div>
+        <div id="content"></div>
+    </main>
+
+    <script>
+        /* State Management */
+        let state = {
+            baseURL: "",
+            authHeader: null,
+            navStack: []
+        };
+
+        const ui = {
+            error: document.getElementById('error'),
+            content: document.getElementById('content'),
+            breadcrumb: document.getElementById('breadcrumb'),
+            loader: document.getElementById('global-loader')
+        };
+
+        /* Theme */
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme') || 'light';
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            document.getElementById('theme-icon').textContent = next === 'light' ? '🌙' : '☀️';
+            localStorage.setItem('theme', next);
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+            document.getElementById('theme-icon').textContent = saved === 'light' ? '🌙' : '☀️';
+        }
+
+        /* Helpers */
+        function toggleLoad(loading) {
+            ui.loader.style.display = loading ? 'block' : 'none';
+        }
+
+        function showError(msg) {
+            ui.error.innerHTML = msg ? `<div class="error"><span>⚠️</span><div>${msg}</div></div>` : "";
+        }
+
+        function fmtBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+        }
+
+        function copyToClip(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('📋 Copied to clipboard!');
+            }).catch(() => {
+                showToast('❌ Failed to copy', 'error');
+            });
+        }
+
+        function showToast(message, type = 'success') {
+            // Remove existing toast if any
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function renderDigest(hash, onClickAction = null) {
+            if (!hash) return "";
+            const textHtml = onClickAction
+                ? `<a class="digest-text digest-link" title="Inspect ${hash}" onclick="${onClickAction}">${hash}</a>`
+                : `<span class="digest-text" title="${hash}">${hash}</span>`;
+            return `
+        <div class="digest-cell">
+            <button class="copy-btn" title="Copy" onclick="copyToClip('${hash}')">📋</button>
+            ${textHtml}
+        </div>`;
+        }
+
+        const escapeHtml = (unsafe) => {
+            if (typeof unsafe !== 'string') return unsafe;
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        };
+
+        /* Navigation */
+        async function navigate(label, renderFn, path) {
+            try {
+                toggleLoad(true);
+                showError(null);
+                ui.content.innerHTML = "";
+
+                await renderFn();
+
+                state.navStack.push({ label, action: renderFn, path });
+
+                const fullPath = path ? (location.pathname.startsWith('/ui') ? `/ui${path}` : path) : null;
+                if (fullPath) history.pushState({}, "", fullPath);
+
+                renderBreadcrumb();
+            } catch (e) {
+                console.error(e);
+                showError(e.message);
+            } finally {
+                toggleLoad(false);
+            }
+        }
+
+        function renderBreadcrumb() {
+            if (state.navStack.length === 0) {
+                ui.breadcrumb.style.display = 'none';
+                return;
+            }
+
+            ui.breadcrumb.style.display = 'flex';
+            ui.breadcrumb.innerHTML = "";
+
+            state.navStack.forEach((step, idx) => {
+                const isLast = idx === state.navStack.length - 1;
+
+                if (idx > 0) {
+                    const sep = document.createElement("span");
+                    sep.className = "separator";
+                    sep.textContent = "/";
+                    ui.breadcrumb.appendChild(sep);
+                }
+
+                if (isLast) {
+                    const span = document.createElement("strong");
+                    span.textContent = step.label;
+                    ui.breadcrumb.appendChild(span);
+                } else {
+                    const btn = document.createElement("button");
+                    btn.textContent = step.label;
+                    btn.onclick = async () => {
+                        state.navStack = state.navStack.slice(0, idx);
+                        await navigate(step.label, step.action, step.path);
+                    };
+                    ui.breadcrumb.appendChild(btn);
+                }
+            });
+        }
+
+        /* API */
+        async function apiFetch(endpoint, options = {}) {
+            const url = `${state.baseURL}${endpoint}`;
+            const headers = options.headers || {};
+            if (state.authHeader) headers.Authorization = state.authHeader;
+
+            let res = await fetch(url, { ...options, headers });
+
+            if (res.status === 401) {
+                const authHeader = res.headers.get("WWW-Authenticate");
+                if (authHeader) {
+                    const token = await performOAuth(authHeader);
+                    headers.Authorization = `Bearer ${token}`;
+                    res = await fetch(url, { ...options, headers });
+                }
+            }
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`API Error ${res.status}: ${text || res.statusText}`);
+            }
+            return res;
+        }
+
+        async function performOAuth(headerVal) {
+            const parts = {};
+            headerVal.replace(/(\w+)="([^"]+)"/g, (m, key, value) => parts[key] = value);
+
+            const authURL = `${parts.realm}?service=${parts.service}&scope=${parts.scope || ''}`;
+            const headers = {};
+            if (state.authHeader) headers.Authorization = state.authHeader;
+
+            const res = await fetch(authURL, { headers });
+            if (!res.ok) throw new Error("Failed to authenticate with registry token server");
+
+            const json = await res.json();
+            return json.token || json.access_token;
+        }
+
+        /* Views */
+        async function loadCatalog(url = "/v2/_catalog") {
+            const res = await apiFetch(url);
+            const data = await res.json();
+
+            const linkHeader = res.headers.get("Link");
+            let nextUrl = null;
+            if (linkHeader) {
+                const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+                if (match) {
+                    try {
+                        const nextObj = new URL(match[1]);
+                        nextUrl = nextObj.pathname + nextObj.search;
+                    } catch (e) { nextUrl = match[1]; }
+                }
+            }
+
+            if (!data.repositories || data.repositories.length === 0) {
+                ui.content.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No repositories found</p>
+            </div>`;
+                return;
+            }
+
+            renderTable({
+                title: "Repositories",
+                headers: [
+                    { title: "Name", class: "" },
+                    { title: "Action", class: "action-col" }
+                ],
+                rows: data.repositories.map(repo => [
+                    `<strong>${escapeHtml(repo)}</strong>`,
+                    `<button class="primary small" onclick="initRepoView('${escapeHtml(repo)}')">View Tags →</button>`
+                ]),
+                rowClasses: ["", "action-col"]
+            });
+
+            if (nextUrl) {
+                const btn = document.createElement("button");
+                btn.textContent = "Load Next Page";
+                btn.className = "primary";
+                btn.style.marginTop = "1rem";
+                btn.onclick = () => navigate("Repositories (Next)", () => loadCatalog(nextUrl), null);
+                ui.content.appendChild(btn);
+            }
+        }
+
+        async function loadTags(repo) {
+            const res = await apiFetch(`/v2/${repo}/tags/list`);
+            const data = await res.json();
+
+            if (!data.tags || data.tags.length === 0) {
+                ui.content.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">🏷️</div>
+                <p>No tags found for this repository</p>
+            </div>`;
+                return;
+            }
+
+            renderTable({
+                title: `Tags in ${repo}`,
+                headers: [
+                    { title: "Tag", class: "" },
+                    { title: "Action", class: "action-col" }
+                ],
+                rows: data.tags.sort().map(tag => [
+                    `<span class="monospace">${escapeHtml(tag)}</span>`,
+                    `<button class="primary small" onclick="initManifestView('${escapeHtml(repo)}', '${escapeHtml(tag)}')">Inspect →</button>`
+                ]),
+                rowClasses: ["", "action-col"]
+            });
+        }
+
+        async function loadManifest(repo, ref) {
+            const headers = {
+                "Accept": "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json"
+            };
+            const res = await apiFetch(`/v2/${repo}/manifests/${ref}`, { headers });
+
+            const digest = res.headers.get("Docker-Content-Digest");
+            const data = await res.json();
+            const mediaType = data.mediaType || res.headers.get("Content-Type");
+
+            const badges = [];
+            if (mediaType) badges.push(`<span class="badge gray">${escapeHtml(mediaType)}</span>`);
+            if (digest) badges.push(`<span class="badge blue" title="${digest}">Digest: ${digest.substring(0, 15)}...</span>`);
+
+            const displayRef = ref.startsWith("sha256:") ? ref.substring(7, 15) + "..." : ref;
+
+            const html = `
+        <div class="panel">
+            <div class="manifest-header">
+                <div class="manifest-title">
+                    <h2>${escapeHtml(repo)}:${escapeHtml(displayRef)}</h2>
+                    <div class="manifest-badges">${badges.join("")}</div>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <button class="copy-btn" title="Copy pull command" onclick="copyToClip('docker pull ${escapeHtml(repo)}@${digest}')">📋</button>
+                <code>docker pull ${escapeHtml(repo)}@${digest}</code>
+            </div>
+        </div>
+    `;
+
+            ui.content.innerHTML = html;
+
+            if (data.manifests) {
+                renderIndexTable(data, repo);
+            } else if (data.layers) {
+                renderImageConfigPlaceholder();
+                renderLayersTable(data);
+                setTimeout(() => fetchImageConfig(repo, data.config.digest), 10);
+            } else if (data.fsLayers) {
+                renderV1Layers(repo, data);
+            }
+
+            const details = document.createElement('details');
+            details.innerHTML = `<summary>📄 Raw Manifest JSON</summary><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            ui.content.appendChild(details);
+        }
+
+        function renderIndexTable(data, repo) {
+            const rows = data.manifests.map(m => {
+                const clickAction = `initManifestView('${escapeHtml(repo)}', '${m.digest}')`;
+                return [
+                    m.platform?.os || "unknown",
+                    `${m.platform?.architecture || "unknown"} ${m.platform?.variant ? `(${m.platform.variant})` : ''}`,
+                    renderDigest(m.digest, clickAction),
+                    fmtBytes(m.size),
+                    `<button class="primary small" onclick="${clickAction}">Inspect →</button>`,
+                ];
+            });
+
+            renderTable({
+                title: "Platform Manifests",
+                headers: [
+                    "OS",
+                    "Architecture",
+                    "Digest",
+                    { title: "Size", class: "size" },
+                    { title: "Action", class: "action-col" },
+                ],
+                rows: rows,
+                rowClasses: ["", "", "", "size", "action-col"],
+            });
+        }
+
+        function renderLayersTable(data) {
+            let totalSize = 0;
+            const rows = data.layers.map((l, i) => {
+                totalSize += l.size;
+                return [
+                    `<span class="badge">Layer ${i}</span>`,
+                    renderDigest(l.digest),
+                    fmtBytes(l.size)
+                ];
+            });
+            rows.push(["<strong>Total</strong>", "", `<strong>${fmtBytes(totalSize)}</strong>`]);
+
+            renderTable({
+                title: "Layers",
+                headers: ["ID", "Digest", { title: "Size", class: "size" }],
+                rows: rows,
+                rowClasses: ["", "", "size"]
+            });
+        }
+
+        function renderV1Layers(repo, data) {
+            const rows = data.fsLayers.map((l, i) => {
+                const cmdInfo = data.history && data.history[i] ? JSON.parse(data.history[i].v1Compatibility) : null;
+                const cmdText = cmdInfo ? (cmdInfo.container_config?.Cmd || []).join(" ") : "";
+                return [
+                    `<span class="badge">Layer ${i}</span>`,
+                    renderDigest(l.blobSum),
+                    `<div class="text-small text-muted" title="${escapeHtml(cmdText)}" style="max-width:400px; overflow:hidden; text-overflow:ellipsis">${escapeHtml(cmdText)}</div>`
+                ];
+            });
+            renderTable({
+                title: "V1 Layers (Legacy Schema)",
+                headers: ["ID", "Blob Sum", "Command / Instruction"],
+                rows: rows
+            });
+        }
+
+        function renderImageConfigPlaceholder() {
+            const div = document.createElement('div');
+            div.id = "config-panel";
+            div.className = "panel";
+            div.innerHTML = `<div class="loading-state"><div class="loader"></div><span>Fetching Image Config...</span></div>`;
+            ui.content.appendChild(div);
+        }
+
+        async function fetchImageConfig(repo, digest) {
+            const panel = document.getElementById('config-panel');
+            toggleLoad(true);
+
+            try {
+                const res = await apiFetch(`/v2/${repo}/blobs/${digest}`);
+                if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+
+                const data = await res.json();
+                const config = data.config || {};
+
+                const createdDate = data.created
+                    ? new Date(data.created).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+                    : "Unknown";
+
+                const keyDetails = [
+                    { label: "OS", value: data.os },
+                    { label: "Architecture", value: data.architecture },
+                    { label: "Variant", value: data.variant },
+                    { label: "User", value: config.User || 'root' },
+                    { label: "Entrypoint", value: config.Entrypoint ? JSON.stringify(config.Entrypoint) : null },
+                    { label: "Cmd", value: config.Cmd ? JSON.stringify(config.Cmd) : null }
+                ].filter(item => item.value);
+
+                const labels = Object.entries(config.Labels || {})
+                    .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
+                    .join("");
+
+                const envs = (config.Env || [])
+                    .map(e => `<li>${escapeHtml(e)}</li>`)
+                    .join("");
+
+                panel.innerHTML = `
+            <div class="config-header">
+                <strong class="panel-title">🔧 Image Configuration</strong>
+                <span class="text-muted">Created: ${createdDate}</span>
+            </div>
+
+            <div class="config-items">
+                ${keyDetails.map(item => `
+                    <div class="config-item">
+                        <strong>${item.label}</strong>
+                        <span title="${escapeHtml(String(item.value))}">${escapeHtml(String(item.value))}</span>
+                    </div>
+                `).join('')}
+            </div>
+
+            ${envs ? `
+            <details>
+                <summary>🌍 Environment Variables (${config.Env?.length || 0})</summary>
+                <ul class="env-list">${envs}</ul>
+            </details>` : ''}
+
+            ${labels ? `
+            <details>
+                <summary>🏷️ Labels (${Object.keys(config.Labels || {}).length})</summary>
+                <ul class="label-list">${labels}</ul>
+            </details>` : ''}
+        `;
+
+            } catch (e) {
+                console.error("Fetch Image Config Error:", e);
+                panel.innerHTML = `
+            <div class="error">
+                <span>⚠️</span>
+                <div>
+                    <strong>Error:</strong> Could not load image configuration.<br>
+                    <small>${escapeHtml(e.message)}</small>
+                </div>
+            </div>`;
+            } finally {
+                toggleLoad(false);
+            }
+        }
+
+        function renderTable({ title, headers, rows, rowClasses }) {
+            const normalizedHeaders = headers.map(h => typeof h === 'string' ? { title: h, class: '' } : h);
+
+            const html = `
+    <div class="panel">
+        <div class="panel-title">${title}</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        ${normalizedHeaders.map(h => `<th class="${h.class} sortable">${h.title}</th>`).join("")}
+                    </tr>
+                </thead>
+                <tbody>
+                ${rows.map(r => `<tr>${r.map((c, i) => {
+                const cellClass = (normalizedHeaders[i] && normalizedHeaders[i].class) || '';
+                return `<td class="${cellClass}">${c}</td>`
+            }).join("")}</tr>`).join("")}
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+
+            ui.content.insertAdjacentHTML('beforeend', html);
+            setupTableSorting();
+        }
+
+        function setupTableSorting() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                if (th.dataset.sorted) return;
+                th.dataset.sorted = "true";
+                th.addEventListener('click', (() => {
+                    const table = th.closest('table');
+                    const tbody = table.querySelector('tbody');
+                    const index = Array.from(th.parentNode.children).indexOf(th);
+                    const asc = !th.classList.contains('asc');
+                    Array.from(table.querySelectorAll('th')).forEach(h => h.classList.remove('asc', 'desc'));
+                    th.classList.toggle('asc', asc);
+                    th.classList.toggle('desc', !asc);
+                    Array.from(tbody.querySelectorAll('tr'))
+                        .sort((a, b) => {
+                            const valA = a.children[index].innerText;
+                            const valB = b.children[index].innerText;
+                            const numA = parseSize(valA);
+                            const numB = parseSize(valB);
+                            if (numA !== null && numB !== null) return asc ? numA - numB : numB - numA;
+                            return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                        })
+                        .forEach(tr => tbody.appendChild(tr));
+                }));
+            });
+        }
+
+        function parseSize(str) {
+            const units = { 'B': 1, 'KB': 1024, 'MB': 1024 ** 2, 'GB': 1024 ** 3 };
+            const match = str.match(/([\d\.]+)\s*(B|KB|MB|GB)/);
+            if (match) return parseFloat(match[1]) * units[match[2]];
+            return null;
+        }
+
+        /* Init & State */
+        function getCredentials() {
+            const registry = document.getElementById('registry').value.replace(/\/$/, "");
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+
+            if (remember) {
+                localStorage.setItem("oci_host", registry);
+                localStorage.setItem("oci_user", user);
+                localStorage.setItem("oci_pwd", pass);
+            } else {
+                localStorage.removeItem("oci_host");
+                localStorage.removeItem("oci_user");
+                localStorage.removeItem("oci_pwd");
+            }
+
+            return {
+                url: registry,
+                auth: (user && pass) ? "Basic " + btoa(user + ":" + pass) : null
+            };
+        }
+
+        async function manualConnect() {
+            const creds = getCredentials();
+            state.baseURL = creds.url;
+            state.authHeader = creds.auth;
+            state.navStack = [];
+            navigate("Repositories", loadCatalog, "/");
+        }
+
+        async function handleInitialRoute() {
+            const savedHost = localStorage.getItem("oci_host");
+            const savedUser = localStorage.getItem("oci_user");
+            const savedPwd = localStorage.getItem("oci_pwd");
+
+            if (savedHost) {
+                document.getElementById('registry').value = savedHost;
+                document.getElementById('remember').checked = true;
+                state.baseURL = savedHost;
+            }
+            if (savedUser) document.getElementById('username').value = savedUser;
+            if (savedPwd) document.getElementById('password').value = savedPwd;
+
+            if (!savedHost) return;
+
+            const prefix = "/ui";
+            let path = location.pathname;
+            if (path.startsWith(prefix)) path = path.slice(prefix.length);
+
+            if (!path || path === "/") {
+                navigate("Repositories", loadCatalog, "/");
+                return;
+            }
+
+            try {
+                let repo, tag;
+
+                if (path.includes('@')) {
+                    const parts = path.substring(1).split('@');
+                    repo = parts[0];
+                    tag = parts[1];
+                } else {
+                    repo = path.substring(1);
+                }
+
+                state.navStack = [];
+                await navigate("Repositories", loadCatalog, "/");
+
+                if (repo) {
+                    await navigate(repo, () => loadTags(repo), `/${repo}`);
+                }
+
+                if (tag) {
+                    await navigate(tag, () => loadManifest(repo, tag), `/${repo}@${tag}`);
+                }
+            } catch (e) {
+                console.error("Auto-route failed", e);
+                showError("Failed to restore session route.");
+            }
+        }
+
+        window.initRepoView = (repo) => {
+            navigate(repo, () => loadTags(repo), `/${repo}`);
+        };
+
+        window.initManifestView = (repo, tag) => {
+            navigate(`${tag}`, () => loadManifest(repo, tag), `/${repo}@${tag}`);
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            handleInitialRoute();
+        });
+        window.addEventListener("popstate", handleInitialRoute);
+    </script>
+</body>
+
+</html>
