@@ -3,6 +3,8 @@
 A lightweight OCI-compatible container registry with RBAC support
 and pull-through caching.
 
+![Simple Registry Web App User Interface](./docs/screenshots/landing.png)
+
 ---
 
 ## ✨ Features
