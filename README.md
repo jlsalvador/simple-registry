@@ -13,6 +13,7 @@ and pull-through caching.
 - **🪶 Lightweight:** Low memory footprint and minimal dependencies.
 - **🛂 Role-Based Access Control (RBAC):** Per repository, action, and role.
 - **📦 Pull-through Caching:** Configurable on-demand caching from external registries.
+- **🌐 Web User Interface:** Optional built-in browser-only, for now.
 - **🔒 Flexible Authentication:** Anonymous, Basic Auth, and tokens.
 - **♻️ Garbage Collection:** On-demand cleanup of unused layers.
 - **🌀 Stateless & Scalable:** Horizontal scaling backed by shared storage.
