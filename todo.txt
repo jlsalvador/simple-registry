@@ -20,6 +20,7 @@ x (B) 2025-12-30 2025-12-17 +gc on demand. @todo
 x (A) 2026-01-05 2026-01-05 disable proxy pull through +cache for +gc. @todo
 x (A) 2026-01-05 2026-01-05 add docker schema v1 support for +gc. @todo
 x (A) 2026-01-06 2026-01-05 ignore ENOENT errors for +gc because pull through +cache. @todo
+x (A) 2026-01-20 2025-12-17 web ui. @todo
 (B) 2026-01-05 +data storage must NOT return http errors. @todo
 (B) 2025-12-20 add +yaml manifest field "enabled". @todo
 (C) 2025-12-17 +gc on timer. @todo
@@ -28,7 +29,6 @@ x (A) 2026-01-06 2026-01-05 ignore ENOENT errors for +gc because pull through +c
 (D) 2025-12-20 add +cmd benchmark to measure +performance. @todo
 2026-01-05 add test for +gc WITH pull through +cache. @todo
 2025-12-17 external optional auth. +rbac @whish
-2025-12-17 web ui for admin. +admin @whish
 2025-12-17 reload +yaml on demand. @whish
 2025-12-17 auto reload +yaml. @whish
 2025-12-30 use iterators instead of slices for +data (RepositoriesList). @debt @whish
