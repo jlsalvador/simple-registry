@@ -1140,7 +1140,7 @@
                 const config = data.config || {};
 
                 const createdDate = data.created
-                    ? new Date(data.created).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+                    ? new Date(data.created).toISOString()
                     : "Unknown";
 
                 const keyDetails = [
@@ -1164,7 +1164,7 @@
                     .map((h, i) => {
                         const createdBy = h.created_by || 'N/A';
                         const createdDate = h.created
-                            ? new Date(h.created).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+                            ? new Date(h.created).toISOString()
                             : '';
                         const emptyLayer = h.empty_layer ? '<span class="badge gray">empty</span>' : '';
                         const comment = h.comment ? `
