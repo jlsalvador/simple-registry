@@ -1150,6 +1150,35 @@
                     .map(e => `<li>${escapeHtml(e)}</li>`)
                     .join("");
 
+                const history = (data.history || [])
+                    .map((h, i) => {
+                        const createdBy = h.created_by || 'N/A';
+                        const createdDate = h.created
+                            ? new Date(h.created).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+                            : '';
+                        const emptyLayer = h.empty_layer ? '<span class="badge gray">empty</span>' : '';
+                        const comment = h.comment ? `
+                            <div class="text-small text-muted" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+                                💬 ${escapeHtml(h.comment)}
+                            </div>` : '';
+
+                        return `
+                        <li>
+                            <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 0.25rem;">
+                                <span class="badge blue">Step ${i + 1}</span>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    ${emptyLayer}
+                                    ${createdDate ? `<span class="text-muted text-small">${createdDate}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-small" style="margin-top: 0.25rem; word-wrap: break-word;">
+                                ${escapeHtml(createdBy)}
+                            </div>
+                            ${comment}
+                        </li>`;
+                    })
+                    .join("");
+
                 panel.innerHTML = `
             <div class="config-header">
                 <strong class="panel-title">🔧 Image Configuration</strong>
@@ -1175,6 +1204,12 @@
             <details>
                 <summary>🏷️ Labels (${Object.keys(config.Labels || {}).length})</summary>
                 <ul class="label-list">${labels}</ul>
+            </details>` : ''}
+
+            ${history ? `
+            <details>
+                <summary>📜 Build History (${data.history?.length || 0} steps)</summary>
+                <ul class="env-list">${history}</ul>
             </details>` : ''}
         `;
 
