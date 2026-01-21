@@ -1014,6 +1014,10 @@
 
             const displayRef = ref.startsWith("sha256:") ? ref.substring(7, 15) + "..." : ref;
 
+            const annotations = Object.entries(data.annotations || {})
+                .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
+                .join("");
+
             const html = `
         <div class="panel">
             <div class="manifest-header">
@@ -1027,6 +1031,12 @@
                 <button class="copy-btn" title="Copy pull command" onclick="copyToClip('docker pull ${escapeHtml(repo)}@${digest}')">📋</button>
                 <code>docker pull ${escapeHtml(repo)}@${digest}</code>
             </div>
+
+            ${annotations ? `
+            <details style="margin-top: 1rem;">
+                <summary>📝 Manifest Annotations (${Object.keys(data.annotations || {}).length})</summary>
+                <ul class="label-list">${annotations}</ul>
+            </details>` : ''}
         </div>
     `;
 
