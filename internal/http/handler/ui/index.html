@@ -1221,6 +1221,11 @@
                 <summary>📜 Build History (${data.history?.length || 0} steps)</summary>
                 <ul class="env-list">${history}</ul>
             </details>` : ''}
+
+            <details style="margin-top: 1rem;">
+                <summary>📄 Raw Configuration JSON</summary>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            </details>
         `;
 
             } catch (e) {
