@@ -1330,7 +1330,7 @@
 
             return {
                 url: registry,
-                auth: (user && pass) ? "Basic " + btoa(user + ":" + pass) : null
+                auth: pass ? (user ? "Basic " + btoa(user + ":" + pass) : "Bearer " + pass) : null,
             };
         }
 
