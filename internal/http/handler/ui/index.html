@@ -1355,6 +1355,15 @@
             if (savedUser) document.getElementById('username').value = savedUser;
             if (savedPwd) document.getElementById('password').value = savedPwd;
 
+            // Set auth header if credentials are saved
+            if (savedPwd) {
+                if (savedUser) {
+                    state.authHeader = "Basic " + btoa(savedUser + ":" + savedPwd);
+                } else {
+                    state.authHeader = "Bearer " + savedPwd;
+                }
+            }
+
             if (!savedHost) return;
 
             const prefix = "/ui";
