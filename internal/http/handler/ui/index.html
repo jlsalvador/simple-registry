@@ -712,7 +712,7 @@
 
     <main>
         <div class="panel toolbar">
-            <input id="registry" value="http://localhost:5000" placeholder="https://registry.example.com">
+            <input id="registry" placeholder="https://registry.example.com">
             <input id="username" placeholder="Username (optional)">
             <input id="password" type="password" placeholder="Password / Token">
             <button onclick="manualConnect()" class="primary">🔌 Connect</button>
@@ -1412,6 +1412,14 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             initTheme();
+
+            const registryInput = document.getElementById('registry');
+            if (!localStorage.getItem("oci_host")) {
+                const currentURL = new URL(window.location.href);
+                const baseURL = `${currentURL.protocol}//${currentURL.host}`;
+                registryInput.value = baseURL;
+            }
+
             handleInitialRoute();
         });
         window.addEventListener("popstate", handleInitialRoute);
