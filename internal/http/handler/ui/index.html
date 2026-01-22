@@ -889,14 +889,22 @@
             const headers = options.headers || {};
             if (state.authHeader) headers.Authorization = state.authHeader;
 
-            let res = await fetch(url, { ...options, headers });
+            let res = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'omit',
+            });
 
             if (res.status === 401) {
                 const authHeader = res.headers.get("WWW-Authenticate");
                 if (authHeader) {
                     const token = await performOAuth(authHeader);
                     headers.Authorization = `Bearer ${token}`;
-                    res = await fetch(url, { ...options, headers });
+                    res = await fetch(url, {
+                        ...options,
+                        headers,
+                        credentials: 'omit'
+                    });
                 }
             }
 
