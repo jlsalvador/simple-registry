@@ -22,8 +22,7 @@ import (
 
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
-
-	u "github.com/google/uuid"
+	u "github.com/jlsalvador/simple-registry/pkg/uuid"
 )
 
 // BlobsUploadCreate creates a new blob upload session for the given
@@ -33,7 +32,7 @@ func (s *FilesystemDataStorage) BlobsUploadCreate(repo string) (uuid string, err
 		return "", ErrRepoInvalid
 	}
 
-	uuid = u.NewString()
+	uuid = u.MustNew().String()
 	uploadDir := filepath.Join(s.base, "repositories", repo, "_uploads", uuid)
 
 	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
@@ -61,7 +60,7 @@ func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
 	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		return ErrUUIDInvalid
 	}
 
@@ -77,7 +76,7 @@ func (s *FilesystemDataStorage) BlobsUploadWrite(repo, uuid string, r io.Reader,
 	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		return ErrUUIDInvalid
 	}
 
@@ -112,7 +111,7 @@ func blobsUploadCommit(
 	if !registry.RegExprName.MatchString(repo) {
 		return ErrRepoInvalid
 	}
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		return ErrUUIDInvalid
 	}
 
@@ -191,7 +190,7 @@ func (s *FilesystemDataStorage) BlobsUploadSize(repo, uuid string) (size int64, 
 	if !registry.RegExprName.MatchString(repo) {
 		return -1, ErrRepoInvalid
 	}
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		return -1, ErrUUIDInvalid
 	}
 

@@ -24,8 +24,6 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
-
-	u "github.com/google/uuid"
 )
 
 // blobsUploadsPostMount mounts blob from other repository.
@@ -250,7 +248,7 @@ func (m *ServeMux) BlobsUploadsGet(
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -324,7 +322,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -426,7 +424,7 @@ func (m *ServeMux) BlobsUploadsPut(
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
@@ -525,7 +523,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
-	if u.Validate(uuid) != nil {
+	if !registry.RegExprUUID.MatchString(uuid) {
 		w.WriteHeader(netHttp.StatusBadRequest)
 		return
 	}
