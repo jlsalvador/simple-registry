@@ -16,6 +16,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	netHttp "net/http"
 	"slices"
 
@@ -88,6 +90,14 @@ func (m *ServeMux) CatalogList(
 	// Fetch repositories from storage.
 	repos, err := m.cfg.Data.RepositoriesList()
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// If the directory does not exist, return an empty list.
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(netHttp.StatusOK)
+			w.Write([]byte(`{"repositories":[]}`))
+			return
+		}
+
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
