@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
 	"github.com/jlsalvador/simple-registry/pkg/digest"
 )
@@ -129,12 +130,12 @@ func TestBlobsUploadWriteAndCommit(t *testing.T) {
 	hasher, _ = digest.NewHasher("sha256")
 	hasher.Write([]byte("another"))
 	wrong := "sha256:" + hasher.GetHashAsString()
-	if err := fs.BlobsUploadCommit("repo", uploadID, wrong); !errors.Is(err, filesystem.ErrDigestMismatch) {
+	if err := fs.BlobsUploadCommit("repo", uploadID, wrong); !errors.Is(err, data.ErrDigestMismatch) {
 		t.Fatal("expected digest mismatch")
 	}
 
 	// short digest hash
-	if err := fs.BlobsUploadCommit("repo", uploadID, "sha256:a"); !errors.Is(err, filesystem.ErrHashShort) {
+	if err := fs.BlobsUploadCommit("repo", uploadID, "sha256:a"); !errors.Is(err, data.ErrHashShort) {
 		t.Fatal("expected hash short")
 	}
 

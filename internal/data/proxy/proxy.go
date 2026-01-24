@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"iter"
 
-	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -23,7 +22,7 @@ func (s *ProxyDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, size 
 		return r, size, nil
 	}
 
-	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, -1, err
 	}
 
@@ -83,7 +82,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 
 	// Try to get from local.
 	r, size, digest, err = s.Next.ManifestGet(repo, reference)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, -1, "", err
 	} else if r != nil {
 		if upstreamDigest == "" || upstreamDigest == digest {
@@ -130,7 +129,7 @@ func (s *ProxyDataStorage) ReferrersGet(
 	if err == nil {
 		return digests, nil
 	}
-	if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, httpErr.ErrNotFound) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
 

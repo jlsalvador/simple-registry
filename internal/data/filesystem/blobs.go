@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jlsalvador/simple-registry/internal/data"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 )
 
@@ -34,7 +35,7 @@ func (s *FilesystemDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, 
 	}
 
 	if len(hash) < 2 {
-		return nil, -1, ErrHashShort
+		return nil, -1, data.ErrHashShort
 	}
 
 	if repo != "" {
@@ -84,7 +85,7 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 	}
 
 	if len(hash) < 2 {
-		return ErrHashShort
+		return data.ErrHashShort
 	}
 
 	if repo != "" {
@@ -173,7 +174,7 @@ func (s *FilesystemDataStorage) BlobLastAccess(digest string) (lastAccess time.T
 	}
 
 	if len(hash) < 2 {
-		return time.Now(), ErrDigestMismatch
+		return time.Now(), data.ErrDigestMismatch
 	}
 
 	blobPath := filepath.Join(s.base, "blobs", algo, hash[0:2], hash)

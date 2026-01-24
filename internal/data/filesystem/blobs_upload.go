@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jlsalvador/simple-registry/internal/data"
 	d "github.com/jlsalvador/simple-registry/pkg/digest"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 	u "github.com/jlsalvador/simple-registry/pkg/uuid"
@@ -29,7 +30,7 @@ import (
 // repository, and returns the upload uuid.
 func (s *FilesystemDataStorage) BlobsUploadCreate(repo string) (uuid string, err error) {
 	if !registry.RegExprName.MatchString(repo) {
-		return "", ErrRepoInvalid
+		return "", data.ErrRepoInvalid
 	}
 
 	uuid = u.MustNew().String()
@@ -58,10 +59,10 @@ func (s *FilesystemDataStorage) BlobsUploadCreate(repo string) (uuid string, err
 // BlobsUploadCancel cancels a blob upload in progress.
 func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
 	if !registry.RegExprName.MatchString(repo) {
-		return ErrRepoInvalid
+		return data.ErrRepoInvalid
 	}
 	if !registry.RegExprUUID.MatchString(uuid) {
-		return ErrUUIDInvalid
+		return data.ErrUUIDInvalid
 	}
 
 	uploadDir := filepath.Join(s.base, "repositories", repo, "_uploads", uuid)
@@ -74,10 +75,10 @@ func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
 // temporal blob data file.
 func (s *FilesystemDataStorage) BlobsUploadWrite(repo, uuid string, r io.Reader, start int64) error {
 	if !registry.RegExprName.MatchString(repo) {
-		return ErrRepoInvalid
+		return data.ErrRepoInvalid
 	}
 	if !registry.RegExprUUID.MatchString(uuid) {
-		return ErrUUIDInvalid
+		return data.ErrUUIDInvalid
 	}
 
 	uploadFile := filepath.Join(s.base, "repositories", repo, "_uploads", uuid, "data")
@@ -109,10 +110,10 @@ func blobsUploadCommit(
 	hash string,
 ) error {
 	if !registry.RegExprName.MatchString(repo) {
-		return ErrRepoInvalid
+		return data.ErrRepoInvalid
 	}
 	if !registry.RegExprUUID.MatchString(uuid) {
-		return ErrUUIDInvalid
+		return data.ErrUUIDInvalid
 	}
 
 	uploadFile := filepath.Join(s.base, "repositories", repo, "_uploads", uuid, "data")
@@ -135,7 +136,7 @@ func blobsUploadCommit(
 
 	// Check if the uploaded data matches the expected digest.
 	if hasher.GetHashAsString() != hash {
-		return ErrDigestMismatch
+		return data.ErrDigestMismatch
 	}
 
 	// Replace existing blob atomically.
@@ -162,7 +163,7 @@ func (s *FilesystemDataStorage) BlobsUploadCommit(repo, uuid, digest string) err
 		return err
 	}
 	if len(hash) < 2 {
-		return ErrHashShort
+		return data.ErrHashShort
 	}
 
 	if err := blobsUploadCommit(s, repo, uuid, algo, hash); err != nil {
@@ -188,10 +189,10 @@ func (s *FilesystemDataStorage) BlobsUploadCommit(repo, uuid, digest string) err
 
 func (s *FilesystemDataStorage) BlobsUploadSize(repo, uuid string) (size int64, err error) {
 	if !registry.RegExprName.MatchString(repo) {
-		return -1, ErrRepoInvalid
+		return -1, data.ErrRepoInvalid
 	}
 	if !registry.RegExprUUID.MatchString(uuid) {
-		return -1, ErrUUIDInvalid
+		return -1, data.ErrUUIDInvalid
 	}
 
 	uploadFile := filepath.Join(s.base, "repositories", repo, "_uploads", uuid, "data")

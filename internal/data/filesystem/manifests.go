@@ -20,14 +20,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"iter"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/jlsalvador/simple-registry/internal/data"
 	pkgDigest "github.com/jlsalvador/simple-registry/pkg/digest"
-	httpErr "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -77,7 +76,7 @@ func (s *FilesystemDataStorage) indexReferrer(repo, referrerDigest string, manif
 // into the repository.
 func (s *FilesystemDataStorage) ManifestPut(repo, reference string, r io.Reader) (dgst string, err error) {
 	if !registry.RegExprName.MatchString(repo) {
-		return "", ErrRepoInvalid
+		return "", data.ErrRepoInvalid
 	}
 
 	hasher, err := pkgDigest.NewHasher(manifestAlgo)
@@ -147,7 +146,7 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 	err error,
 ) {
 	if !registry.RegExprName.MatchString(repo) {
-		return nil, -1, "", ErrRepoInvalid
+		return nil, -1, "", data.ErrRepoInvalid
 	}
 
 	algo, hash, err := pkgDigest.Parse(reference)
@@ -161,10 +160,6 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 		)
 		b, err := os.ReadFile(tagLink)
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return nil, -1, "", errors.Join(httpErr.ErrNotFound, err)
-			}
-
 			return nil, -1, "", err
 		}
 		algo, hash, err = pkgDigest.Parse(string(b))
@@ -177,10 +172,6 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 	blobPath := filepath.Join(s.base, "blobs", algo, hash[0:2], hash)
 	f, err := os.Open(blobPath)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, -1, "", errors.Join(httpErr.ErrNotFound, err)
-		}
-
 		return nil, -1, "", fmt.Errorf("cannot open blob %s: %w", blobPath, err)
 	}
 
@@ -198,7 +189,7 @@ func (s *FilesystemDataStorage) ManifestGet(repo, reference string) (
 
 func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	if !registry.RegExprName.MatchString(repo) {
-		return errors.Join(httpErr.ErrBadRequest, ErrRepoInvalid)
+		return data.ErrRepoInvalid
 	}
 
 	// Case 1: reference is a tag.
@@ -208,9 +199,8 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 			"tags", reference,
 		)
 
-		// Docker returns 404 if tag does not exist
 		if _, err := os.Stat(tagDir); err != nil {
-			return errors.Join(httpErr.ErrNotFound, err)
+			return err
 		}
 
 		return os.RemoveAll(tagDir)
@@ -239,7 +229,7 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 	// Delete the revision.
 	algo, hash, err := pkgDigest.Parse(reference)
 	if err != nil {
-		return errors.Join(httpErr.ErrBadRequest, err)
+		return errors.Join(data.ErrDigestInvalid, err)
 	}
 
 	revisionDir := filepath.Join(
@@ -247,14 +237,13 @@ func (s *FilesystemDataStorage) ManifestDelete(repo, reference string) error {
 		"revisions", algo, hash,
 	)
 
-	// Docker returns 404 if revision does not exist
 	if _, err := os.Stat(revisionDir); err != nil {
-		return errors.Join(httpErr.ErrNotFound, err)
+		return err
 	}
 
 	// Remove revision link
 	if err := os.RemoveAll(revisionDir); err != nil {
-		return errors.Join(httpErr.ErrInternalServerError, err)
+		return err
 	}
 
 	//TODO: Garbage collection of unused revisions and tags.

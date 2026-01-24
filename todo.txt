@@ -21,7 +21,8 @@ x (A) 2026-01-05 2026-01-05 disable proxy pull through +cache for +gc. @todo
 x (A) 2026-01-05 2026-01-05 add docker schema v1 support for +gc. @todo
 x (A) 2026-01-06 2026-01-05 ignore ENOENT errors for +gc because pull through +cache. @todo
 x (A) 2026-01-20 2025-12-17 web ui. @todo
-(B) 2026-01-05 +data storage must NOT return http errors. @todo
+x (B) 2026-01-23 2026-01-05 +data storage must NOT return http errors. @debt @todo
+(B) 2026-01-23 +rbac must NOT return http errors. @debt @todo
 (B) 2025-12-20 add +yaml manifest field "enabled". @todo
 (C) 2025-12-17 +gc on timer. @todo
 (D) 2025-12-22 config +data dir by +yaml manifest. @todo

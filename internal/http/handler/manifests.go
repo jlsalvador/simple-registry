@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	netHttp "net/http"
 
-	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
+	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
@@ -97,10 +98,6 @@ func (m *ServeMux) ManifestsGet(
 	// Get the manifest blob from the data storage.
 	blob, size, digest, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
-		if httpErr, ok := err.(httpErrors.HttpError); ok {
-			w.WriteHeader(httpErr.Status)
-			return
-		}
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
 			return
@@ -187,8 +184,8 @@ func (m *ServeMux) ManifestsPut(
 	defer r.Body.Close()
 	dgst, err := m.cfg.Data.ManifestPut(repo, reference, r.Body)
 	if err != nil {
-		if httpErr, ok := err.(httpErrors.HttpError); ok {
-			w.WriteHeader(httpErr.Status)
+		if errors.Is(err, data.ErrRepoInvalid) {
+			w.WriteHeader(netHttp.StatusBadRequest)
 			return
 		}
 
@@ -199,8 +196,8 @@ func (m *ServeMux) ManifestsPut(
 	// Re-read the just written manifest.
 	f, _, _, err := m.cfg.Data.ManifestGet(repo, reference)
 	if err != nil {
-		if httpErr, ok := err.(httpErrors.HttpError); ok {
-			w.WriteHeader(httpErr.Status)
+		if errors.Is(err, fs.ErrNotExist) {
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
@@ -281,10 +278,12 @@ func (m *ServeMux) ManifestsDelete(
 	}
 
 	if err := m.cfg.Data.ManifestDelete(repo, reference); err != nil {
-		if httpErr, ok := err.(httpErrors.HttpError); ok {
-			w.WriteHeader(httpErr.Status)
+		if errors.Is(err, data.ErrRepoInvalid) || errors.Is(err, data.ErrDigestInvalid) {
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+		// Docker returns 404 if tag does not exist
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
 			return

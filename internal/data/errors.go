@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package filesystem
+package data
 
 import "errors"
 
 var ErrRepoInvalid = errors.New("repo is not valid")
 var ErrUUIDInvalid = errors.New("uuid is not valid")
 var ErrHashShort = errors.New("hash is too short")
+var ErrDigestInvalid = errors.New("digest is not valid")
 var ErrDigestMismatch = errors.New("digest mismatch")
