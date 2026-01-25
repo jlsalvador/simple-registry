@@ -16,13 +16,19 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build binary
+        run: go build -o simple-registry ./cmd/simple-registry
+
       - name: Start registry server
         run: |
-          go run ./cmd/simple-registry serve \
+          ./simple-registry serve \
             -datadir /tmp/registry \
             -adminname admin \
             -adminpwd testpassword123 \
-            2>&1 >/tmp/registry.log &
+            > /tmp/registry.log 2>&1 &
 
           echo $! > /tmp/registry.pid
 
@@ -30,7 +36,7 @@ jobs:
           max_attempts=30
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
-            if curl -u admin:testpassword123 -sf http://localhost:5000/v2/ 2>&1 >/dev/null; then
+            if curl -u admin:testpassword123 -sf http://localhost:5000/v2/ >/dev/null 2>&1; then
               echo "✓ Registry is ready!"
               break
             fi
