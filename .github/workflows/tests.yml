@@ -1,0 +1,149 @@
+name: tests
+on: push
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-tags: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests (cyclo)
+        id: test-cyclo
+        run: make test-cyclo 2>&1 | tee test-cyclo.log
+        continue-on-error: true
+
+      - name: Run tests (misspell)
+        id: test-misspell
+        run: make test-misspell 2>&1 | tee test-misspell.log
+        continue-on-error: true
+
+      - name: Run tests (go test)
+        id: test-go
+        run: make test-go 2>&1 | tee test-go.log
+        continue-on-error: true
+
+      - name: Generate coverage reports
+        if: always()
+        run: make cover
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Cyclo test
+          echo "## Cyclomatic Complexity" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-cyclo.outcome }}" == "success" ]; then
+            echo "✓ **Passed** - No functions with complexity > 15" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✗ **Failed** - Some functions have high complexity" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat test-cyclo.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Misspell test
+          echo "## Spell Checking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-misspell.outcome }}" == "success" ]; then
+            echo "✓ **Passed** - No spelling errors found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✗ **Failed** - Spelling errors detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat test-misspell.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Go test
+          echo "## Unit Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-go.outcome }}" == "success" ]; then
+            echo "✓ **Passed** - All unit tests successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✗ **Failed** - Some unit tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat test-go.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          if [ -f build/cover.txt ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "# Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat build/cover.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            COVERAGE=$(grep "total:" build/cover.txt | awk '{print $3}')
+            if [ -n "$COVERAGE" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Total Coverage: $COVERAGE**" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: test-results-${{ github.sha }}
+          path: |
+            test-cyclo.log
+            test-misspell.log
+            test-go.log
+            build/cover.out
+            build/cover.txt
+            build/cover.html
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Check if all tests passed
+        if: always()
+        run: |
+          FAILED=0
+
+          if [ "${{ steps.test-cyclo.outcome }}" != "success" ]; then
+            echo "✗ Cyclomatic complexity test failed"
+            FAILED=1
+          fi
+
+          if [ "${{ steps.test-misspell.outcome }}" != "success" ]; then
+            echo "✗ Misspell test failed"
+            FAILED=1
+          fi
+
+          if [ "${{ steps.test-go.outcome }}" != "success" ]; then
+            echo "✗ Go unit tests failed"
+            FAILED=1
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "One or more tests failed. Check the summary above for details."
+            exit 1
+          else
+            echo "✓ All tests passed successfully!"
+          fi
