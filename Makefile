@@ -58,8 +58,8 @@ PLATFORMS_LIST := linux-amd64 linux-arm64
 BINARIES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM})
 BINARIES_LATEST=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_latest_${PLATFORM})
 
-# Generate list of release archives
-RELEASE_ARCHIVES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM}.tar.gz)
+# Generate list of artifacts archives
+ARTIFACTS_ARCHIVES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM}.tar.gz)
 
 CONTAINER_TOOL ?= podman
 PLATFORMS ?= linux/arm64,linux/amd64
@@ -203,11 +203,11 @@ ${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/% _create_repo_url_file
 	tar -czf "$@" -C "$${TEMP_DIR}" .; \
 	rm -rf "$${TEMP_DIR}"
 
-.PHONY: release-archives
-release-archives: ${RELEASE_ARCHIVES} ## Create release archives (.tar.gz).
+.PHONY: artifacts-archives
+artifacts-archives: ${ARTIFACTS_ARCHIVES} ## Create artifacts archives (.tar.gz).
 
-.PHONY: release-checksums
-release-checksums: release-archives ## Generate SHA256 checksums for release files.
+.PHONY: artifacts-checksums
+artifacts-checksums: artifacts-archives ## Generate SHA256 checksums for artifacts files.
 	@echo "Generating SHA256 checksums..."
 	@cd "${BUILD_DIR}" && \
 	find . -type f \( -name "*.tar.gz" -o -name "${BINARY_NAME}_${BUILD_VERSION}_*" \) ! -name "*.sha256" | \
@@ -215,11 +215,11 @@ release-checksums: release-archives ## Generate SHA256 checksums for release fil
 	xargs sha256sum > "${BINARY_NAME}_${BUILD_VERSION}.sha256"
 	@echo "Checksums saved to: ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
-.PHONY: release
-release: build _create_symlinks release-archives release-checksums ## Build complete GitHub release (binaries, archives, checksums).
+.PHONY: artifacts
+artifacts: build _create_symlinks artifacts-archives artifacts-checksums ## Build complete GitHub artifacts (binaries, archives, checksums).
 	@echo ""
 	@echo "========================================"
-	@echo "Release build complete!"
+	@echo "Artifacts build complete!"
 	@echo "========================================"
 	@echo "Version: ${BUILD_VERSION}"
 	@echo "Build directory: ${BUILD_DIR}"
