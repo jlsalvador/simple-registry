@@ -79,6 +79,7 @@ jobs:
             echo "<summary>" >> $GITHUB_STEP_SUMMARY
             echo "Cyclomatic Complexity Report" >> $GITHUB_STEP_SUMMARY
             echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-cyclo.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -91,6 +92,7 @@ jobs:
             echo "<summary>" >> $GITHUB_STEP_SUMMARY
             echo "Spell Checking Report" >> $GITHUB_STEP_SUMMARY
             echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-misspell.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -103,6 +105,7 @@ jobs:
             echo "<summary>" >> $GITHUB_STEP_SUMMARY
             echo "Unit Tests Report" >> $GITHUB_STEP_SUMMARY
             echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-go.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
@@ -118,6 +121,7 @@ jobs:
             echo "<summary>" >> $GITHUB_STEP_SUMMARY
             echo "Coverage Report" >> $GITHUB_STEP_SUMMARY
             echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat build/cover.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
