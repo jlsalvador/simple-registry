@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   tests:
-    name: Run Tests
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -49,62 +49,79 @@ jobs:
       - name: Generate test summary
         if: always()
         run: |
-          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Test |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
 
           # Cyclo test
-          echo "## Cyclomatic Complexity" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.test-cyclo.outcome }}" == "success" ]; then
-            echo "✅ **Passed** - No functions with complexity > 15" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | Cyclomatic Complexity - No functions with complexity > 15 |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Failed** - Some functions have high complexity" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | Cyclomatic Complexity - Some functions have high complexity |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Misspell test
+          if [ "${{ steps.test-misspell.outcome }}" == "success" ]; then
+            echo "| ✅ Passed | Spell Checking - No spelling errors found |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ❌ Failed | Spell Checking - Spelling errors detected |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Go test
+          if [ "${{ steps.test-go.outcome }}" == "success" ]; then
+            echo "| ✅ Passed | Unit Tests - All unit tests successful |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ❌ Failed | Unit Tests - Some unit tests failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ steps.test-cyclo.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>" >> $GITHUB_STEP_SUMMARY
+            echo "Cyclomatic Complexity Report" >> $GITHUB_STEP_SUMMARY
+            echo "</summary>" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-cyclo.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Misspell test
-          echo "## Spell Checking" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.test-misspell.outcome }}" == "success" ]; then
-            echo "✅ **Passed** - No spelling errors found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Failed** - Spelling errors detected" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-misspell.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>" >> $GITHUB_STEP_SUMMARY
+            echo "Spell Checking Report" >> $GITHUB_STEP_SUMMARY
+            echo "</summary>" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-misspell.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Go test
-          echo "## Unit Tests" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.test-go.outcome }}" == "success" ]; then
-            echo "✅ **Passed** - All unit tests successful" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Failed** - Some unit tests failed" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.test-go.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>" >> $GITHUB_STEP_SUMMARY
+            echo "Unit Tests Report" >> $GITHUB_STEP_SUMMARY
+            echo "</summary>" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-go.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Display coverage summary
         if: always()
         run: |
           if [ -f build/cover.txt ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "# Coverage Report" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "</summary>" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat build/cover.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
 
             COVERAGE=$(grep "total:" build/cover.txt | awk '{print $3}')
             if [ -n "$COVERAGE" ]; then
@@ -223,20 +240,52 @@ jobs:
           OCI_HIDE_SKIPPED_WORKFLOWS: 0
           OCI_DEBUG: 0
 
+      - name: Parse conformance test results
+        if: always()
+        id: parse-results
+        run: |
+          set -e
+
+          # Parse the HTML report generated by the OCI conformance tests
+          # The report contains a summary in the format: "74 passed" and "5 skipped"
+
+          PASSED=$(grep -oP '\d+(?= passed)' report.html 2>/dev/null | head -1 || echo "0")
+          FAILED=$(grep -oP '\d+(?= failed)' report.html 2>/dev/null | head -1 || echo "0")
+          SKIPPED=$(grep -oP '\d+(?= skipped)' report.html 2>/dev/null | head -1 || echo "0")
+
+          # Calculate totals
+          RAN_SPECS=$((PASSED + FAILED))
+          TOTAL_SPECS=$((RAN_SPECS + SKIPPED))
+
+          echo "passed=${PASSED}" >> $GITHUB_OUTPUT
+          echo "failed=${FAILED}" >> $GITHUB_OUTPUT
+          echo "skipped=${SKIPPED}" >> $GITHUB_OUTPUT
+          echo "ran_specs=${RAN_SPECS}" >> $GITHUB_OUTPUT
+          echo "total_specs=${TOTAL_SPECS}" >> $GITHUB_OUTPUT
+
+          echo "✅ Parsed results from report.html"
+          echo "Results: ${PASSED} passed, ${FAILED} failed, ${SKIPPED} skipped"
+
       - name: Generate OCI conformance summary
         if: always()
         run: |
-          echo "# OCI Distribution Spec Conformance" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ steps.oci-tests.outcome }}" == "success" ]; then
-            echo "✅ **All OCI Distribution Spec conformance tests passed**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The registry is fully compliant with the OCI Distribution Specification." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.parse-results.outputs.failed }}" == "0" ]; then
+            echo "✅ **OCI Distribution Spec conformance tests passed**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **OCI Distribution Spec conformance tests failed**" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Display test results if available
+          if [ -n "${{ steps.parse-results.outputs.passed }}" ]; then
+            echo "## Test Results" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Some tests did not pass. Check the logs below for details." >> $GITHUB_STEP_SUMMARY
+            echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | ${{ steps.parse-results.outputs.passed }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | ${{ steps.parse-results.outputs.failed }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | ${{ steps.parse-results.outputs.skipped }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | ${{ steps.parse-results.outputs.ran_specs }} / ${{ steps.parse-results.outputs.total_specs }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Show registry logs on failure
