@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  BINARY_NAME: simple-registry
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-tags: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Build artifacts
+        run: make artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-artifacts
+          path: |
+            build/${{ env.BINARY_NAME }}_*.tar.gz
+            build/${{ env.BINARY_NAME }}_*.sha256
+          if-no-files-found: error
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/${{ env.BINARY_NAME }}_*.tar.gz
+            build/${{ env.BINARY_NAME }}_*.sha256
+          generate_release_notes: true
+          draft: false
+          prerelease: false
