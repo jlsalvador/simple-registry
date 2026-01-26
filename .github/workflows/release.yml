@@ -1,6 +1,12 @@
-name: Release
+name: release
 
 on:
+  workflow_run:
+    workflows:
+      - tests
+      - oci-distribution-conformance
+    types:
+      - completed
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
@@ -16,7 +22,9 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
+    if: |
+      github.ref_type == 'tag' &&
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
