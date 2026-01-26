@@ -17,7 +17,7 @@
 BUILD_CURRENT_VERSION := $(strip $(shell git describe --tags --match='v[0-9]+.[0-9]+.[0-9]+' 2>/dev/null || printf v0.0.1))
 BUILD_VERSION_MAJOR ?= $(word 1, $(subst v,,$(subst ., ,$(BUILD_CURRENT_VERSION))))
 BUILD_VERSION_MINOR ?= $(word 2, $(subst ., ,$(BUILD_CURRENT_VERSION)))
-BUILD_VERSION_PATCH ?= $(shell date --utc +%s)
+BUILD_VERSION_PATCH ?= $(word 3, $(subst ., ,$(BUILD_CURRENT_VERSION)))
 export BUILD_VERSION := $(BUILD_VERSION_MAJOR).$(BUILD_VERSION_MINOR).$(BUILD_VERSION_PATCH)
 
 MODULE_NAME := $(shell grep ^module go.mod | cut -d' ' -f2)
