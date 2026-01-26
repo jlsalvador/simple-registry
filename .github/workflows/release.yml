@@ -207,6 +207,8 @@ jobs:
           done
 
       - name: Run OCI Distribution Spec conformance tests
+        id: oci-tests
+        continue-on-error: true
         uses: opencontainers/distribution-spec@v1.1.1
         env:
           OCI_ROOT_URL: http://localhost:5000
@@ -221,17 +223,50 @@ jobs:
           OCI_HIDE_SKIPPED_WORKFLOWS: 0
           OCI_DEBUG: 0
 
+      - name: Generate OCI conformance summary
+        if: always()
+        run: |
+          echo "# OCI Distribution Spec Conformance" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.oci-tests.outcome }}" == "success" ]; then
+            echo "✅ **All OCI Distribution Spec conformance tests passed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The registry is fully compliant with the OCI Distribution Specification." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **OCI Distribution Spec conformance tests failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Some tests did not pass. Check the logs below for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Show registry logs on failure
         if: failure()
         run: |
           echo "=== Registry Logs ==="
           cat /tmp/registry.log
 
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Registry Logs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/registry.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Stop registry server
         if: always()
         run: |
           if [ -f /tmp/registry.pid ]; then
             kill $(cat /tmp/registry.pid) || true
+          fi
+
+      - name: Check OCI conformance result
+        if: always()
+        run: |
+          if [ "${{ steps.oci-tests.outcome }}" != "success" ]; then
+            echo "❌ OCI Distribution Spec conformance tests failed"
+            exit 1
+          else
+            echo "✅ OCI Distribution Spec conformance tests passed!"
           fi
 
   release:
@@ -266,7 +301,69 @@ jobs:
           cache: true
 
       - name: Build artifacts
-        run: make artifacts
+        id: build
+        run: |
+          echo "Building release artifacts..."
+          make artifacts
+
+          # Get version from tag
+          VERSION="${{ github.ref_name }}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+          # Count artifacts
+          TAR_COUNT=$(ls -1 build/simple-registry_*.tar.gz 2>/dev/null | wc -l)
+          echo "tar_count=${TAR_COUNT}" >> $GITHUB_OUTPUT
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          echo "# Release Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Version Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`master\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.build.outcome }}" == "success" ]; then
+            echo "## ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Generated Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # List tar.gz files
+            if ls build/simple-registry_*.tar.gz 1> /dev/null 2>&1; then
+              echo "**Archives (.tar.gz):**" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              ls -lh build/simple-registry_*.tar.gz | awk '{print $9, "(" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # List checksum files
+            if ls build/simple-registry_*.sha256 1> /dev/null 2>&1; then
+              echo "**Checksums (.sha256):**" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              ls -lh build/simple-registry_*.sha256 | awk '{print $9, "(" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Show checksums content
+            if [ -f "build/simple-registry_${{ steps.build.outputs.version }}.sha256" ]; then
+              echo "### Checksums" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat "build/simple-registry_${{ steps.build.outputs.version }}.sha256" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The artifact build process failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -278,6 +375,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create Release
+        id: create-release
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -286,3 +384,38 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+
+      - name: Generate release summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.create-release.outcome }}" == "success" ]; then
+            echo "## 🚀 Release Published Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Release URL:** ${{ steps.create-release.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Installation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download the appropriate binary for your platform:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "# Linux AMD64" >> $GITHUB_STEP_SUMMARY
+            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}_linux-amd64.tar.gz | tar -xz simple-registry" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "# Linux ARM64" >> $GITHUB_STEP_SUMMARY
+            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}_linux-arm64.tar.gz | tar -xz simple-registry" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Verify Checksums" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}.sha256 | sha256sum --ignore-missing -c -" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Release Publication Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The release could not be published. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
