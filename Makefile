@@ -20,13 +20,14 @@ BUILD_VERSION_MINOR ?= $(word 2, $(subst ., ,$(BUILD_CURRENT_VERSION)))
 BUILD_VERSION_PATCH ?= $(word 3, $(subst ., ,$(BUILD_CURRENT_VERSION)))
 export BUILD_VERSION := $(BUILD_VERSION_MAJOR).$(BUILD_VERSION_MINOR).$(BUILD_VERSION_PATCH)
 
+PROJECT_ROOT := $(abspath .)
 MODULE_NAME := $(shell grep ^module go.mod | cut -d' ' -f2)
 VERSION_PKG := $(MODULE_NAME)/internal/version
 
 NPROCS = $(shell grep -c 'processor' /proc/cpuinfo || printf 1)
 MAKEFLAGS += -j$(NPROCS)
 
-BUILD_DIR ?= $(shell pwd)/build
+BUILD_DIR ?= $(PROJECT_ROOT)/build
 LDFLAGS=-X $(VERSION_PKG).AppVersion=${BUILD_VERSION} -w -s
 
 BINARY_NAME=$(notdir $(MODULE_NAME))
@@ -66,6 +67,12 @@ MISSPELL ?= $(LOCALBIN)/misspell
 ## Tool Versions
 GOCYCLO_VERSION ?= latest
 MISSPELL_VERSION ?= latest
+
+$(GOCYCLO): $(LOCALBIN)
+	test -s $(LOCALBIN)/gocyclo || GOBIN=$(LOCALBIN) go install github.com/fzipp/gocyclo/cmd/gocyclo@$(GOCYCLO_VERSION)
+
+$(MISSPELL): $(LOCALBIN)
+	test -s $(LOCALBIN)/misspell || GOBIN=$(LOCALBIN) go install github.com/client9/misspell/cmd/misspell@$(MISSPELL_VERSION)
 
 ##@ General
 
@@ -138,17 +145,13 @@ ${BUILD_DIR}/%_linux-arm64: ${GO_SOURCE} _mkdir_build
 
 .PHONY: _create_symlinks
 _create_symlinks: ${BINARIES}
-	@echo "Creating symbolic links..."
-	@# Latest links
-	@for platform in $(PLATFORMS_LIST); do \
+	for platform in $(PLATFORMS_LIST); do \
 		if [ -f "${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_$${platform}" ]; then \
 			ln -sf "${BINARY_NAME}_${BUILD_VERSION}_$${platform}" "${BUILD_DIR}/${BINARY_NAME}_latest_$${platform}"; \
 		fi; \
 	done
-	@# Link for host platform
-	@if [ -f "${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" ]; then \
+	if [ -f "${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" ]; then \
 		ln -sf "${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" "${BUILD_DIR}/${BINARY_NAME}"; \
-		echo "Created symlink for host platform: ${BUILD_DIR}/${BINARY_NAME} -> ${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}"; \
 	fi
 
 .PHONY: build
@@ -156,8 +159,7 @@ build: _create_symlinks ## Build project binaries.
 
 # Create compressed archives for release
 ${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/%
-	@echo "Creating release archive: $@"
-	@TEMP_DIR=$$(mktemp -d); \
+	TEMP_DIR=$$(mktemp -d); \
 	cp "$<" "$${TEMP_DIR}/${BINARY_NAME}"; \
 	cp README.md "$${TEMP_DIR}/" 2>/dev/null || true; \
 	cp LICENSE "$${TEMP_DIR}/" 2>/dev/null || true; \
@@ -165,16 +167,14 @@ ${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/%
 	rm -rf "$${TEMP_DIR}"
 
 .PHONY: artifacts-archives
-artifacts-archives: ${ARTIFACTS_ARCHIVES} ## Create artifacts archives (.tar.gz).
+artifacts-archives: ${ARTIFACTS_ARCHIVES}
 
 .PHONY: artifacts-checksums
-artifacts-checksums: artifacts-archives ## Generate SHA256 checksums for artifacts files.
-	@echo "Generating SHA256 checksums..."
-	@cd "${BUILD_DIR}" && \
+artifacts-checksums: artifacts-archives
+	cd "${BUILD_DIR}" && \
 	find . -type f \( -name "*.tar.gz" -o -name "${BINARY_NAME}_${BUILD_VERSION}_*" \) ! -name "*.sha256" | \
 	sort | \
 	xargs sha256sum > "${BINARY_NAME}_${BUILD_VERSION}.sha256"
-	@echo "Checksums saved to: ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
 .PHONY: artifacts
 artifacts: artifacts-checksums ## Build artifacts (binaries, archives, checksums).
@@ -185,39 +185,23 @@ artifacts: artifacts-checksums ## Build artifacts (binaries, archives, checksums
 	@echo "Version: ${BUILD_VERSION}"
 	@echo "Build directory: ${BUILD_DIR}"
 	@echo ""
-	@echo "Release artifacts:"
-	@ls -lh "${BUILD_DIR}"/${BINARY_NAME}_${BUILD_VERSION}_*
-	@echo ""
 	@echo "Upload these files:"
 	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_*.tar.gz"
 	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
 .PHONY: all
-all: | clean test artifacts ## Execute all typical targets before publish.
-
-
-##@ Test Dependencies
-
-.PHONY: gocyclo
-gocyclo: $(GOCYCLO) ## Download gocyclo locally if necessary.
-$(GOCYCLO): $(LOCALBIN)
-	test -s $(LOCALBIN)/gocyclo || GOBIN=$(LOCALBIN) go install github.com/fzipp/gocyclo/cmd/gocyclo@$(GOCYCLO_VERSION)
-
-.PHONY: misspell
-misspell: $(MISSPELL) ## Download misspell locally if necessary.
-$(MISSPELL): $(LOCALBIN)
-	test -s $(LOCALBIN)/misspell || GOBIN=$(LOCALBIN) go install github.com/client9/misspell/cmd/misspell@$(MISSPELL_VERSION)
+all: clean .WAIT test .WAIT build artifacts ## Execute all typical targets before publish.
 
 
 ##@ Test
 
 .PHONY: test-cyclo
-test-cyclo: gocyclo ## Run gocyclo against code.
+test-cyclo: $(GOCYCLO) ## Run gocyclo against code.
 	$(GOCYCLO) -over 15 .
 
 .PHONY: test-misspell
-test-misspell: misspell ## Run misspell against code.
-	$(MISSPELL) -error cmd docs internal pkg LICENSE Makefile README.md
+test-misspell: $(MISSPELL) ## Run misspell against code.
+	$(MISSPELL) -error .github cmd docs internal pkg LICENSE Makefile README.md
 
 .PHONY: test-go
 test-go: ## Test code.
