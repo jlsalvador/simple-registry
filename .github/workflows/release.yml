@@ -161,10 +161,7 @@ jobs:
 
           if [ "${{ steps.test-cyclo.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details>" >> $GITHUB_STEP_SUMMARY
-            echo "<summary>" >> $GITHUB_STEP_SUMMARY
-            echo "Cyclomatic Complexity Report" >> $GITHUB_STEP_SUMMARY
-            echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Cyclomatic Complexity Report</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-cyclo.log >> $GITHUB_STEP_SUMMARY
@@ -174,10 +171,7 @@ jobs:
 
           if [ "${{ steps.test-misspell.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details>" >> $GITHUB_STEP_SUMMARY
-            echo "<summary>" >> $GITHUB_STEP_SUMMARY
-            echo "Spell Checking Report" >> $GITHUB_STEP_SUMMARY
-            echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Spell Checking Report</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-misspell.log >> $GITHUB_STEP_SUMMARY
@@ -187,10 +181,7 @@ jobs:
 
           if [ "${{ steps.test-go.outcome }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details>" >> $GITHUB_STEP_SUMMARY
-            echo "<summary>" >> $GITHUB_STEP_SUMMARY
-            echo "Unit Tests Report" >> $GITHUB_STEP_SUMMARY
-            echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Unit Tests Report</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat test-go.log >> $GITHUB_STEP_SUMMARY
@@ -209,10 +200,7 @@ jobs:
             fi
 
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details>" >> $GITHUB_STEP_SUMMARY
-            echo "<summary>" >> $GITHUB_STEP_SUMMARY
-            echo "Coverage Report" >> $GITHUB_STEP_SUMMARY
-            echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat build/cover.txt >> $GITHUB_STEP_SUMMARY
@@ -225,10 +213,7 @@ jobs:
         run: |
           if [ -f /tmp/registry.log ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "<details>" >> $GITHUB_STEP_SUMMARY
-            echo "<summary>" >> $GITHUB_STEP_SUMMARY
-            echo "Registry Logs" >> $GITHUB_STEP_SUMMARY
-            echo "</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Registry Logs</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat /tmp/registry.log >> $GITHUB_STEP_SUMMARY
