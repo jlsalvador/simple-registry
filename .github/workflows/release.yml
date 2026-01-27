@@ -275,7 +275,8 @@ jobs:
     needs:
       - tests
     if: |
-      github.ref_type == 'tag'
+      github.ref_type == 'tag' &&
+      github.event.base_ref == 'refs/heads/master'
     steps:
       - name: Validate version tag format
         run: |
