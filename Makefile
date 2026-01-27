@@ -30,7 +30,6 @@ BUILD_DIR ?= $(shell pwd)/build
 LDFLAGS=-X $(VERSION_PKG).AppVersion=${BUILD_VERSION} -w -s
 
 BINARY_NAME=$(notdir $(MODULE_NAME))
-REPO_URL=https://$(MODULE_NAME)
 GO_SOURCE=$(wildcard *.go)
 
 # Detect host platform and architecture
@@ -155,18 +154,14 @@ _create_symlinks: build
 		echo "Created symlink for host platform: ${BUILD_DIR}/${BINARY_NAME} -> ${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}"; \
 	fi
 
-.PHONY: _create_repo_url_file
-_create_repo_url_file: _mkdir_build
-	@echo "$(REPO_URL)" > "${BUILD_DIR}/REPOSITORY.txt"
 
 # Create compressed archives for release
-${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/% _create_repo_url_file
+${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/%
 	@echo "Creating release archive: $@"
 	@TEMP_DIR=$$(mktemp -d); \
 	cp "$<" "$${TEMP_DIR}/${BINARY_NAME}"; \
 	cp README.md "$${TEMP_DIR}/" 2>/dev/null || true; \
 	cp LICENSE "$${TEMP_DIR}/" 2>/dev/null || true; \
-	cp "${BUILD_DIR}/REPOSITORY.txt" "$${TEMP_DIR}/" 2>/dev/null || true; \
 	tar -czf "$@" -C "$${TEMP_DIR}" .; \
 	rm -rf "$${TEMP_DIR}"
 
