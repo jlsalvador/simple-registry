@@ -50,10 +50,10 @@ endif
 PLATFORMS_LIST := linux-amd64 linux-arm64
 
 # Generate list of binaries
-BINARIES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM})
+BINARIES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}_${PLATFORM})
 
 # Generate list of artifacts archives
-ARTIFACTS_ARCHIVES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM}.tar.gz)
+ARTIFACTS_ARCHIVES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}_${PLATFORM}.tar.gz)
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -146,12 +146,12 @@ ${BUILD_DIR}/%_linux-arm64: ${GO_SOURCE} _mkdir_build
 .PHONY: _create_symlinks
 _create_symlinks: ${BINARIES}
 	for platform in $(PLATFORMS_LIST); do \
-		if [ -f "${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_$${platform}" ]; then \
-			ln -sf "${BINARY_NAME}_${BUILD_VERSION}_$${platform}" "${BUILD_DIR}/${BINARY_NAME}_latest_$${platform}"; \
+		if [ -f "${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}_$${platform}" ]; then \
+			ln -sf "${BINARY_NAME}_v${BUILD_VERSION}_$${platform}" "${BUILD_DIR}/${BINARY_NAME}_latest_$${platform}"; \
 		fi; \
 	done
-	if [ -f "${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" ]; then \
-		ln -sf "${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" "${BUILD_DIR}/${BINARY_NAME}"; \
+	if [ -f "${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" ]; then \
+		ln -sf "${BINARY_NAME}_v${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}" "${BUILD_DIR}/${BINARY_NAME}"; \
 	fi
 
 .PHONY: build
@@ -172,9 +172,9 @@ artifacts-archives: ${ARTIFACTS_ARCHIVES}
 .PHONY: artifacts-checksums
 artifacts-checksums: artifacts-archives
 	cd "${BUILD_DIR}" && \
-	find . -type f \( -name "*.tar.gz" -o -name "${BINARY_NAME}_${BUILD_VERSION}_*" \) ! -name "*.sha256" | \
+	find . -type f \( -name "*.tar.gz" -o -name "${BINARY_NAME}_v${BUILD_VERSION}_*" \) ! -name "*.sha256" | \
 	sort | \
-	xargs sha256sum > "${BINARY_NAME}_${BUILD_VERSION}.sha256"
+	xargs sha256sum > "${BINARY_NAME}_v${BUILD_VERSION}.sha256"
 
 .PHONY: artifacts
 artifacts: artifacts-checksums ## Build artifacts (binaries, archives, checksums).
@@ -182,12 +182,12 @@ artifacts: artifacts-checksums ## Build artifacts (binaries, archives, checksums
 	@echo "========================================"
 	@echo "Artifacts build complete!"
 	@echo "========================================"
-	@echo "Version: ${BUILD_VERSION}"
+	@echo "Version: v${BUILD_VERSION}"
 	@echo "Build directory: ${BUILD_DIR}"
 	@echo ""
 	@echo "Upload these files:"
-	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_*.tar.gz"
-	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
+	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}_*.tar.gz"
+	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_v${BUILD_VERSION}.sha256"
 
 .PHONY: all
 all: clean .WAIT test .WAIT build artifacts ## Execute all typical targets before publish.
