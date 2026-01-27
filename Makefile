@@ -163,7 +163,7 @@ ${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/%
 	cp "$<" "$${TEMP_DIR}/${BINARY_NAME}"; \
 	cp README.md "$${TEMP_DIR}/" 2>/dev/null || true; \
 	cp LICENSE "$${TEMP_DIR}/" 2>/dev/null || true; \
-	tar -czf "$@" -C "$${TEMP_DIR}" .; \
+	(cd "$${TEMP_DIR}" && tar -czf "$@" *); \
 	rm -rf "$${TEMP_DIR}"
 
 .PHONY: artifacts-archives
