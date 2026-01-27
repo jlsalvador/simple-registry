@@ -27,12 +27,7 @@ NPROCS = $(shell grep -c 'processor' /proc/cpuinfo || printf 1)
 MAKEFLAGS += -j$(NPROCS)
 
 BUILD_DIR ?= $(shell pwd)/build
-LDFLAGS_COMMON=-X $(VERSION_PKG).AppVersion=${BUILD_VERSION}
-LDFLAGS_PROD=$(LDFLAGS_COMMON) -w -s
-LDFLAGS_DEBUG=$(LDFLAGS_COMMON)
-GCFLAGS_COMMON =
-GCFLAGS_PROD = $(GCFLAGS_COMMON)
-GCFLAGS_DEBUG = $(GCFLAGS_COMMON) all=-N -l
+LDFLAGS=-X $(VERSION_PKG).AppVersion=${BUILD_VERSION} -w -s
 
 BINARY_NAME=$(notdir $(MODULE_NAME))
 REPO_URL=https://$(MODULE_NAME)
@@ -56,22 +51,9 @@ PLATFORMS_LIST := linux-amd64 linux-arm64
 
 # Generate list of binaries
 BINARIES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM})
-BINARIES_LATEST=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_latest_${PLATFORM})
 
 # Generate list of artifacts archives
 ARTIFACTS_ARCHIVES=$(foreach PLATFORM, ${PLATFORMS_LIST}, ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_${PLATFORM}.tar.gz)
-
-CONTAINER_TOOL ?= podman
-PLATFORMS ?= linux/arm64,linux/amd64
-IMG ?= ${BINARY_NAME}:latest
-# Derive debug image tag
-IMG_NAME := $(word 1,$(subst :, ,$(IMG)))
-IMG_TAG  := $(or $(word 2,$(subst :, ,$(IMG))),latest)
-ifeq ($(IMG_TAG),latest)
-IMG_DEBUG := $(IMG_NAME):debug
-else
-IMG_DEBUG := $(IMG_NAME):$(IMG_TAG)-debug
-endif
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -111,21 +93,8 @@ clean: ## Remove build directory.
 	go clean ; \
 	rm -rf "${BUILD_DIR}"
 
-.PHONY: container-clean-prod
-container-clean-prod:
-	-$(CONTAINER_TOOL) rmi $(IMG)
-	-$(CONTAINER_TOOL) manifest rm $(IMG)
-
-.PHONY: container-clean-debug
-container-clean-debug:
-	-$(CONTAINER_TOOL) rmi $(IMG_DEBUG)
-	-$(CONTAINER_TOOL) manifest rm $(IMG_DEBUG)
-
-.PHONY: container-clean
-container-clean: container-clean-prod container-clean-debug  ## Remove container images.
-
 .PHONY: mrproper
-mrproper: clean container-clean ## Remove all generated files.
+mrproper: clean ## Remove all generated files.
 	rm -rf "${LOCALBIN}"
 
 
@@ -155,8 +124,7 @@ ${BUILD_DIR}/%_linux-amd64: ${GO_SOURCE} _mkdir_build
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build \
 			-trimpath \
-			-ldflags="${LDFLAGS_PROD}" \
-			-gcflags="${GCFLAGS_PROD}" \
+			-ldflags="${LDFLAGS}" \
 			-o $@ \
 			./cmd/${BINARY_NAME}
 
@@ -165,8 +133,7 @@ ${BUILD_DIR}/%_linux-arm64: ${GO_SOURCE} _mkdir_build
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
 		go build \
 			-trimpath \
-			-ldflags="${LDFLAGS_PROD}" \
-			-gcflags="${GCFLAGS_PROD}" \
+			-ldflags="${LDFLAGS}" \
 			-o $@ \
 			./cmd/${BINARY_NAME}
 
@@ -231,33 +198,6 @@ artifacts: build _create_symlinks artifacts-archives artifacts-checksums ## Buil
 	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}_*.tar.gz"
 	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
-.PHONY: container-prod
-container-prod: container-clean-prod ${GO_SOURCE}
-	$(CONTAINER_TOOL) build \
-		--target prod \
-		--manifest $(IMG) \
-		--platform=$(PLATFORMS) \
-		--build-arg="GCFLAGS=${GCFLAGS_PROD}" \
-		--build-arg="LDFLAGS=${LDFLAGS_PROD}" \
-		--build-arg="TARGETBIN=$(BINARY_NAME)" \
-		--build-arg="BUILD_TYPE=prod" \
-		-f Dockerfile .
-
-.PHONY: container-debug
-container-debug: container-clean-debug ${GO_SOURCE}
-	$(CONTAINER_TOOL) build \
-		--target debug \
-		--manifest $(IMG_DEBUG) \
-		--platform=$(PLATFORMS) \
-		--build-arg="GCFLAGS=${GCFLAGS_DEBUG}" \
-		--build-arg="LDFLAGS=${LDFLAGS_DEBUG}" \
-		--build-arg="TARGETBIN=$(BINARY_NAME)" \
-		--build-arg="BUILD_TYPE=debug" \
-		-f Dockerfile .
-
-.PHONY: container
-container: container-prod container-debug ## Build both prod and debug images.
-
 .PHONY: all
 all: | clean test build ## Execute all typical targets before publish.
 
@@ -291,17 +231,3 @@ test-go: ## Test code.
 
 .PHONY: test
 test: test-cyclo test-misspell test-go ## Execute all tests.
-
-
-##@ Release
-
-.PHONY: publish-prod
-publish-prod: container-prod
-	$(CONTAINER_TOOL) manifest push --all $(IMG)
-
-.PHONY: publish-debug
-publish-debug: container-debug
-	$(CONTAINER_TOOL) manifest push --all $(IMG_DEBUG)
-
-.PHONY: publish
-publish: publish-prod publish-debug ## Publish container images
