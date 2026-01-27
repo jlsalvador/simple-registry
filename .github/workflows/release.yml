@@ -293,74 +293,106 @@ jobs:
         with:
           lfs: true
 
+      - name: Generate Release Information summary
+        run: |
+          echo "# Release Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Build artifacts
-        id: build
-        run: |
-          echo "Building release artifacts..."
-          make artifacts
+      - name: Build Artifacts
+        id: artifacts-build
+        run: make artifacts
 
-          # Get version from tag
-          VERSION="${{ github.ref_name }}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-          # Count artifacts
-          TAR_COUNT=$(ls -1 build/simple-registry_*.tar.gz 2>/dev/null | wc -l)
-          echo "tar_count=${TAR_COUNT}" >> $GITHUB_OUTPUT
-
-      - name: Generate build summary
+      - name: Generate Artifacts summary
         if: always()
         run: |
-          echo "## Version Information" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** \`master\`" >> $GITHUB_STEP_SUMMARY
+          echo "# 📦 Binary Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ steps.build.outcome }}" == "success" ]; then
-            echo "## ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Generated Artifacts" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            # List tar.gz files
-            if ls build/simple-registry_*.tar.gz 1> /dev/null 2>&1; then
-              echo "**Archives (.tar.gz):**" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              ls -lh build/simple-registry_*.tar.gz | awk '{print $9, "(" $5 ")"}' >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-
-            # List checksum files
-            if ls build/simple-registry_*.sha256 1> /dev/null 2>&1; then
-              echo "**Checksums (.sha256):**" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              ls -lh build/simple-registry_*.sha256 | awk '{print $9, "(" $5 ")"}' >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-
-            # Show checksums content
-            if [ -f "build/simple-registry_${{ steps.build.outputs.version }}.sha256" ]; then
-              echo "### Checksums" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat "build/simple-registry_${{ steps.build.outputs.version }}.sha256" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
+          # Binary artifacts summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.artifacts-build.outcome }}" == "success" ]; then
+            echo "**✅ Build Successful**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "## ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The artifact build process failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**❌ Build Failed**" >> $GITHUB_STEP_SUMMARY
           fi
+          if ls build/simple-registry_*.tar.gz 1> /dev/null 2>&1; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Archives</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            ls -lh build/simple-registry_*.tar.gz | awk '{print $9, "(" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "build/simple-registry_${{ github.ref_name }}.sha256" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Checksums</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat "build/simple-registry_${{ github.ref_name }}.sha256" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for images
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/simple-registry
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=auto
+
+      - name: Build and push Docker images
+        id: docker-build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -381,38 +413,35 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+          body: |
+            ## 🖥️ Platforms:
 
-      - name: Generate release summary
+            - linux/amd64
+            - linux/arm64
+
+            ## 🐳 Container Images:
+
+            - ${{ secrets.DOCKERHUB_USERNAME }}/simple-registry:${{ github.ref_name }}
+            - ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+
+            ## 📦 Binary Installation
+
+            ```sh
+            ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/') curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ github.ref_name }}_linux-$ARCH.tar.gz | tar -xz simple-registry
+            ```
+
+      - name: Generate Release summary
         if: always()
         run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
           if [ "${{ steps.create-release.outcome }}" == "success" ]; then
             echo "## 🚀 Release Published Successfully" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Release URL:** ${{ steps.create-release.outputs.url }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Installation" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Download the appropriate binary for your platform:" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo "# Linux AMD64" >> $GITHUB_STEP_SUMMARY
-            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}_linux-amd64.tar.gz | tar -xz simple-registry" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "# Linux ARM64" >> $GITHUB_STEP_SUMMARY
-            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}_linux-arm64.tar.gz | tar -xz simple-registry" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Verify Checksums" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo "curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/simple-registry_${{ steps.build.outputs.version }}.sha256 | sha256sum --ignore-missing -c -" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "## ❌ Release Publication Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "The release could not be published. Check the logs for details." >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
