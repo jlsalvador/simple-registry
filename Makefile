@@ -136,11 +136,8 @@ ${BUILD_DIR}/%_linux-arm64: ${GO_SOURCE} _mkdir_build
 			-o $@ \
 			./cmd/${BINARY_NAME}
 
-.PHONY: build
-build: ${BINARIES} ## Build project binaries.
-
 .PHONY: _create_symlinks
-_create_symlinks: build
+_create_symlinks: ${BINARIES}
 	@echo "Creating symbolic links..."
 	@# Latest links
 	@for platform in $(PLATFORMS_LIST); do \
@@ -154,6 +151,8 @@ _create_symlinks: build
 		echo "Created symlink for host platform: ${BUILD_DIR}/${BINARY_NAME} -> ${BINARY_NAME}_${BUILD_VERSION}_${HOST_OS}-${HOST_ARCH}"; \
 	fi
 
+.PHONY: build
+build: _create_symlinks ## Build project binaries.
 
 # Create compressed archives for release
 ${BUILD_DIR}/%.tar.gz: ${BUILD_DIR}/%
@@ -178,7 +177,7 @@ artifacts-checksums: artifacts-archives ## Generate SHA256 checksums for artifac
 	@echo "Checksums saved to: ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
 .PHONY: artifacts
-artifacts: build _create_symlinks artifacts-archives artifacts-checksums ## Build complete GitHub artifacts (binaries, archives, checksums).
+artifacts: artifacts-checksums ## Build artifacts (binaries, archives, checksums).
 	@echo ""
 	@echo "========================================"
 	@echo "Artifacts build complete!"
@@ -194,7 +193,7 @@ artifacts: build _create_symlinks artifacts-archives artifacts-checksums ## Buil
 	@echo "  - ${BUILD_DIR}/${BINARY_NAME}_${BUILD_VERSION}.sha256"
 
 .PHONY: all
-all: | clean test build ## Execute all typical targets before publish.
+all: | clean test artifacts ## Execute all typical targets before publish.
 
 
 ##@ Test Dependencies
