@@ -3,7 +3,9 @@
 A lightweight OCI-compatible container registry with RBAC support
 and pull-through caching.
 
-![Simple Registry Web App User Interface](./docs/screenshots/landing.png)
+Repository: <https://github.com/jlsalvador/simple-registry>
+
+![Simple Registry Web App User Interface][screenshot]
 
 ---
 
@@ -116,3 +118,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 [oci-spec]: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md
+[screenshot]: https://github.com/jlsalvador/simple-registry/raw/main/docs/screenshots/landing.png
