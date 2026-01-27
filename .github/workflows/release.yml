@@ -294,10 +294,10 @@ jobs:
 
       - name: Generate Repository summary
         run: |
-          echo "## 🗂️ Repository summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Repository summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** <https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}>" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** <https://github.com/${{ github.repository }}/commit/${{ github.sha }}>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
 
@@ -315,7 +315,7 @@ jobs:
         if: always()
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📦 Binary Artifacts summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Binary Artifacts summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Binary artifacts summary
@@ -432,12 +432,15 @@ jobs:
       - name: Generate Release summary
         if: always()
         run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Release summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.create-release.outcome }}" == "success" ]; then
-            echo "## 🚀 Release Published Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "**🚀 Release Published Successfully**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Release URL:** ${{ steps.create-release.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "## ❌ Release Publication Failed" >> $GITHUB_STEP_SUMMARY
+            echo "**💥 Release Publication Failed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "The release could not be published. Check the logs for details." >> $GITHUB_STEP_SUMMARY
           fi
