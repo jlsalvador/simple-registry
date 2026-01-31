@@ -157,3 +157,25 @@ func TestBlobsUploadWriteAndCommit(t *testing.T) {
 		t.Fatal("link not written")
 	}
 }
+
+func TestBlobsUploadSize(t *testing.T) {
+	tmpdir := t.TempDir()
+	fs := filesystem.NewFilesystemDataStorage(tmpdir)
+
+	repo := "repo"
+	uuid, err := fs.BlobsUploadCreate(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := []byte("hello world")
+	if err := fs.BlobsUploadWrite(repo, uuid, bytes.NewReader(data), 0); err != nil {
+		t.Fatal(err)
+	}
+
+	if size, err := fs.BlobsUploadSize(repo, uuid); err != nil {
+		t.Fatal(err)
+	} else if size != int64(len(data)) {
+		t.Fatalf("wrong size: %d", size)
+	}
+}
