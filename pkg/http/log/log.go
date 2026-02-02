@@ -41,11 +41,6 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			userAgent = "-"
 		}
 
-		status := lrw.status
-		if status == 0 {
-			status = http.StatusOK
-		}
-
 		pkgLog.Info(
 			"service.name", version.AppName,
 			"service.version", version.AppVersion,
