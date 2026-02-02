@@ -67,36 +67,7 @@ func TestManifestPut(t *testing.T) {
 			reference: "latest",
 			manifest:  createTestManifest(nil),
 			wantErr:   false,
-			checkFunc: func(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
-				// Check tag link
-				tagLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "tags", reference, "current", "link")
-				linkData, err := os.ReadFile(tagLink)
-				if err != nil {
-					t.Errorf("tag link not created: %v", err)
-					return
-				}
-				if string(linkData) != digest {
-					t.Errorf("tag link content = %s, want %s", string(linkData), digest)
-				}
-
-				// Check revision link
-				algo, hash, _ := splitDigest(digest)
-				revisionLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "revisions", algo, hash, "link")
-				revData, err := os.ReadFile(revisionLink)
-				if err != nil {
-					t.Errorf("revision link not created: %v", err)
-					return
-				}
-				if string(revData) != digest {
-					t.Errorf("revision link content = %s, want %s", string(revData), digest)
-				}
-
-				// Check blob exists
-				blobPath := filepath.Join(baseDir, "blobs", algo, hash[0:2], hash)
-				if _, err := os.Stat(blobPath); err != nil {
-					t.Errorf("blob not created: %v", err)
-				}
-			},
+			checkFunc: checkManifestWithTag,
 		},
 		{
 			name:      "put manifest with digest",
@@ -104,20 +75,7 @@ func TestManifestPut(t *testing.T) {
 			reference: "sha256:fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
 			manifest:  createTestManifest(nil),
 			wantErr:   false,
-			checkFunc: func(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
-				// Check revision link exists
-				algo, hash, _ := splitDigest(digest)
-				revisionLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "revisions", algo, hash, "link")
-				if _, err := os.Stat(revisionLink); err != nil {
-					t.Errorf("revision link not created: %v", err)
-				}
-
-				// Tag should NOT be created when reference is a digest
-				tagLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "tags", reference, "current", "link")
-				if _, err := os.Stat(tagLink); err == nil {
-					t.Error("tag link should not be created for digest reference")
-				}
-			},
+			checkFunc: checkManifestWithDigest,
 		},
 		{
 			name:      "put manifest with subject (referrer)",
@@ -128,23 +86,8 @@ func TestManifestPut(t *testing.T) {
 				Digest:    "sha256:subject1234567890subject1234567890subject1234567890subject12345678",
 				Size:      999,
 			}),
-			wantErr: false,
-			checkFunc: func(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
-				// Check referrer directory exists
-				subjectDigest := "sha256:subject1234567890subject1234567890subject1234567890subject12345678"
-				algo, hash, _ := splitDigest(subjectDigest)
-				referrerDir := filepath.Join(baseDir, "repositories", repo, "_manifests", "referrers", algo, hash, digest)
-				linkPath := filepath.Join(referrerDir, "link")
-
-				linkData, err := os.ReadFile(linkPath)
-				if err != nil {
-					t.Errorf("referrer link not created: %v", err)
-					return
-				}
-				if string(linkData) != subjectDigest {
-					t.Errorf("referrer link content = %s, want %s", string(linkData), subjectDigest)
-				}
-			},
+			wantErr:   false,
+			checkFunc: checkManifestWithSubject,
 		},
 		{
 			name:      "invalid repository name",
@@ -179,19 +122,112 @@ func TestManifestPut(t *testing.T) {
 				return
 			}
 
-			if digest == "" {
-				t.Error("ManifestPut() returned empty digest")
-				return
-			}
-
-			if !strings.HasPrefix(digest, "sha256:") {
-				t.Errorf("ManifestPut() digest = %s, should start with sha256:", digest)
-			}
+			validateDigest(t, digest)
 
 			if tt.checkFunc != nil {
 				tt.checkFunc(t, storage, baseDir, tt.repo, tt.reference, digest)
 			}
 		})
+	}
+}
+
+func validateDigest(t *testing.T, digest string) {
+	t.Helper()
+	if digest == "" {
+		t.Error("ManifestPut() returned empty digest")
+		return
+	}
+
+	if !strings.HasPrefix(digest, "sha256:") {
+		t.Errorf("ManifestPut() digest = %s, should start with sha256:", digest)
+	}
+}
+
+func checkManifestWithTag(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
+	t.Helper()
+	checkTagLink(t, baseDir, repo, reference, digest)
+	checkRevisionLink(t, baseDir, repo, digest)
+	checkBlobExists(t, baseDir, digest)
+}
+
+func checkManifestWithDigest(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
+	t.Helper()
+	checkRevisionLinkExists(t, baseDir, repo, digest)
+	ensureTagLinkNotCreated(t, baseDir, repo, reference)
+}
+
+func checkManifestWithSubject(t *testing.T, storage *filesystem.FilesystemDataStorage, baseDir, repo, reference, digest string) {
+	t.Helper()
+	subjectDigest := "sha256:subject1234567890subject1234567890subject1234567890subject12345678"
+	checkReferrerLink(t, baseDir, repo, digest, subjectDigest)
+}
+
+func checkTagLink(t *testing.T, baseDir, repo, reference, digest string) {
+	t.Helper()
+	tagLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "tags", reference, "current", "link")
+	linkData, err := os.ReadFile(tagLink)
+	if err != nil {
+		t.Errorf("tag link not created: %v", err)
+		return
+	}
+	if string(linkData) != digest {
+		t.Errorf("tag link content = %s, want %s", string(linkData), digest)
+	}
+}
+
+func checkRevisionLink(t *testing.T, baseDir, repo, digest string) {
+	t.Helper()
+	algo, hash, _ := splitDigest(digest)
+	revisionLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "revisions", algo, hash, "link")
+	revData, err := os.ReadFile(revisionLink)
+	if err != nil {
+		t.Errorf("revision link not created: %v", err)
+		return
+	}
+	if string(revData) != digest {
+		t.Errorf("revision link content = %s, want %s", string(revData), digest)
+	}
+}
+
+func checkBlobExists(t *testing.T, baseDir, digest string) {
+	t.Helper()
+	algo, hash, _ := splitDigest(digest)
+	blobPath := filepath.Join(baseDir, "blobs", algo, hash[0:2], hash)
+	if _, err := os.Stat(blobPath); err != nil {
+		t.Errorf("blob not created: %v", err)
+	}
+}
+
+func checkRevisionLinkExists(t *testing.T, baseDir, repo, digest string) {
+	t.Helper()
+	algo, hash, _ := splitDigest(digest)
+	revisionLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "revisions", algo, hash, "link")
+	if _, err := os.Stat(revisionLink); err != nil {
+		t.Errorf("revision link not created: %v", err)
+	}
+}
+
+func ensureTagLinkNotCreated(t *testing.T, baseDir, repo, reference string) {
+	t.Helper()
+	tagLink := filepath.Join(baseDir, "repositories", repo, "_manifests", "tags", reference, "current", "link")
+	if _, err := os.Stat(tagLink); err == nil {
+		t.Error("tag link should not be created for digest reference")
+	}
+}
+
+func checkReferrerLink(t *testing.T, baseDir, repo, digest, subjectDigest string) {
+	t.Helper()
+	algo, hash, _ := splitDigest(subjectDigest)
+	referrerDir := filepath.Join(baseDir, "repositories", repo, "_manifests", "referrers", algo, hash, digest)
+	linkPath := filepath.Join(referrerDir, "link")
+
+	linkData, err := os.ReadFile(linkPath)
+	if err != nil {
+		t.Errorf("referrer link not created: %v", err)
+		return
+	}
+	if string(linkData) != subjectDigest {
+		t.Errorf("referrer link content = %s, want %s", string(linkData), subjectDigest)
 	}
 }
 
