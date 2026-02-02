@@ -124,6 +124,7 @@ ${BUILD_DIR}/cover.html: ${BUILD_DIR}/cover.out
 
 .PHONY: cover
 cover: ${BUILD_DIR}/cover.txt ${BUILD_DIR}/cover.html ## Generate coverage reports.
+	@echo "total: "$(shell grep "total:" build/cover.txt | awk '{print $$3}')
 
 # Rule to build linux-amd64 binaries
 ${BUILD_DIR}/%_linux-amd64: ${GO_SOURCE} _mkdir_build
