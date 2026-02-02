@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package log provides middleware for logging HTTP requests and responses.
 package log
 
 import (
@@ -26,7 +27,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		lrw := &loggingResponseWriter{
+		lrw := &LoggingResponseWriter{
 			ResponseWriter: w,
 		}
 
@@ -34,7 +35,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		remoteAddr := getClientIP(r)
+		remoteAddr := GetClientIP(r)
 
 		userAgent := r.UserAgent()
 		if userAgent == "" {
@@ -49,8 +50,8 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"http.request.method", r.Method,
 			"url.original", r.URL.String(),
 			"http.version", r.Proto,
-			"http.response.status_code", status,
-			"http.response.body.bytes", lrw.bytes,
+			"http.response.status_code", lrw.Status,
+			"http.response.body.bytes", lrw.Bytes,
 			"http.request.body.bytes", r.ContentLength,
 			"event.duration", duration.Nanoseconds(),
 			"user_agent.original", userAgent,

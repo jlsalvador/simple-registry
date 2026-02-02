@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func getClientIP(r *http.Request) string {
+func GetClientIP(r *http.Request) string {
 	// Helper to clean IP (remove zone for IPv6)
 	cleanIP := func(ip string) string {
 		ip = strings.Split(ip, "%")[0] // remove IPv6 zone if present
