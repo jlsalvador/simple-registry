@@ -142,7 +142,7 @@ func blobsUploadsPostThenPut(
 //   - {name}		must be a valid repository name.
 //
 // # Url query params:
-//   - "mount" optional. Requires "from" query param.
+//   - "mount" optional.
 //   - "from" optional. Requires "mount" query param.
 //   - "digest" optional. Must be a valid digest.
 //
