@@ -15,12 +15,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	netHttp "net/http"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/pkg/http"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
@@ -472,6 +474,24 @@ func (m *ServeMux) BlobsUploadsPut(
 		// Docker expects 404 when the blob does not exist
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)
+			return
+		}
+
+		if errors.Is(err, data.ErrDigestMismatch) {
+			e := registry.OciErrorResponse{
+				Errors: []registry.OciError{
+					{
+						Code:    "DIGEST_INVALID",
+						Message: "provided digest did not match uploaded content",
+						Detail:  digest,
+					},
+				},
+			}
+			s, _ := json.Marshal(e)
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Length", fmt.Sprint(len(s)))
+			w.WriteHeader(netHttp.StatusBadRequest)
+			w.Write(s)
 			return
 		}
 

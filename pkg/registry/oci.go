@@ -179,3 +179,13 @@ type DockerManifestV1 struct {
 	} `json:"history"`
 	SchemaVersion int `json:"schemaVersion"`
 }
+
+type OciError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Detail  any    `json:"detail,omitempty"`
+}
+
+type OciErrorResponse struct {
+	Errors []OciError `json:"errors"`
+}
