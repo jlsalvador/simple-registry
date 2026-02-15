@@ -24,6 +24,7 @@ import (
 	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/http/log"
 	"github.com/jlsalvador/simple-registry/pkg/http/route"
+	"github.com/jlsalvador/simple-registry/pkg/mapset"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -153,7 +154,7 @@ func (m *ServeMux) registerRoutes() {
 	}
 
 	m.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		allowed := map[string]struct{}{}
+		allowed := mapset.NewMapSet[string]()
 
 		for _, route := range routes {
 			route.Handler(w, r)
@@ -165,9 +166,9 @@ func (m *ServeMux) registerRoutes() {
 			// Save the route method if the URL matches but not the method, for
 			// the later Allow HTTP header.
 			if route.IsMatchUrl && !route.IsMatchMethod {
-				allowed[route.Method] = struct{}{}
+				allowed.Add(route.Method)
 				if route.Method == http.MethodGet {
-					allowed[http.MethodHead] = struct{}{}
+					allowed.Add(http.MethodHead)
 				}
 			}
 		}
