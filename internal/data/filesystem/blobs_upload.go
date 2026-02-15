@@ -66,6 +66,9 @@ func (s *FilesystemDataStorage) BlobsUploadCancel(repo, uuid string) error {
 	}
 
 	uploadDir := filepath.Join(s.base, "repositories", repo, "_uploads", uuid)
+	if _, err := os.Stat(uploadDir); err != nil {
+		return err
+	}
 	return os.RemoveAll(uploadDir)
 }
 
