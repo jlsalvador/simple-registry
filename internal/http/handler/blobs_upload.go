@@ -362,10 +362,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	}
 
 	if err := m.cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, start); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(netHttp.StatusNotFound)
-			return
-		}
+		// fs.ErrNotExist was triggered by BlobsUploadSize.
 
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
