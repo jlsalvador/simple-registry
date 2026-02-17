@@ -91,7 +91,7 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 	if repo != "" {
 		// Repo is not empty, so only delete repo blob link.
 
-		// Link path
+		// Link directory.
 		linkPath := filepath.Join(
 			s.base,
 			"repositories",
@@ -99,20 +99,21 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 			"_layers",
 			algo,
 			hash,
-			"link",
 		)
-
-		if err := os.RemoveAll(filepath.Dir(linkPath)); err != nil {
+		if _, err := os.Stat(linkPath); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(linkPath); err != nil {
 			return err
 		}
 
-		//TODO: Garbage collect unused blobs
+		//TODO: Trigger garbage collect for unused blobs.
 		return nil
 
 	} else {
 		// Repo is empty, so only delete the blob.
 
-		// Blob path
+		// Blob directory.
 		blobPath := filepath.Join(
 			s.base,
 			"blobs",
@@ -120,6 +121,9 @@ func (s *FilesystemDataStorage) BlobsDelete(repo, digest string) error {
 			hash[:2],
 			hash,
 		)
+		if _, err := os.Stat(blobPath); err != nil {
+			return err
+		}
 		if err := os.RemoveAll(blobPath); err != nil {
 			return err
 		}
