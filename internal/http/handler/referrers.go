@@ -35,7 +35,7 @@ func isSkipableManifest(
 		}
 	} else {
 		// Legacy artifact
-		if blobManifest.MediaType != "application/vnd.oci.image.manifest.v1+json" {
+		if blobManifest.MediaType != registry.MediaTypeOCIImageManifest {
 			return true
 		}
 
