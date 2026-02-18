@@ -16,662 +16,517 @@ package handler_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
+	"strings"
 	"testing"
 
-	"github.com/jlsalvador/simple-registry/internal/config"
-	"github.com/jlsalvador/simple-registry/internal/http/handler"
 	"github.com/jlsalvador/simple-registry/pkg/digest"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
-const testUser = "testuser"
-const testPwd = "testpwd"
-const testUserWithoutPerms = "without"
-const testPwdWithoutPerms = "without"
+var (
+	testBlob       = []byte("hello world")
+	testBlobDigest = func() string {
+		dgst, _ := digest.NewHasher("sha256")
+		dgst.Write(testBlob)
+		return dgst.GetHashAsString()
+	}()
+)
 
-var testAuthHeader = "Basic " + base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", testUser, testPwd))
-var testAuthHeaderWithoutPerms = "Basic " + base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", testUserWithoutPerms, testPwdWithoutPerms))
-
-func setupTestServeMux(t *testing.T) http.Handler {
-	t.Helper()
-
-	cfg, err := config.New(testUser, testPwd, "", t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cfg.Rbac.Users = append(cfg.Rbac.Users, rbac.User{
-		Name: testUserWithoutPerms,
-		PasswordHash: func() string {
-			pwd, err := bcrypt.GenerateFromPassword([]byte(testPwdWithoutPerms), bcrypt.DefaultCost)
-			if err != nil {
-				t.Fatal(err)
+func TestBlobsUploads(t *testing.T) {
+	reqPost := func(repo, auth string, queries map[string]string) func(prevResp *http.Response) *http.Request {
+		return func(_ *http.Response) *http.Request {
+			url := fmt.Sprintf("/v2/%s/blobs/uploads/", repo)
+			r := httptest.NewRequest(http.MethodPost, url, nil)
+			for k, v := range queries {
+				q := r.URL.Query()
+				q.Add(k, v)
+				r.URL.RawQuery = q.Encode()
 			}
-			return string(pwd)
-		}(),
-	}, rbac.User{
-		Name: rbac.AnonymousUsername,
-	})
-
-	cfg.Rbac.Roles = append(cfg.Rbac.Roles, rbac.Role{
-		Name:      "everything",
-		Resources: []string{"*"},
-		Verbs: []string{
-			http.MethodHead,
-			http.MethodGet,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-		},
-	})
-
-	cfg.Rbac.RoleBindings = append(cfg.Rbac.RoleBindings, rbac.RoleBinding{
-		Name:     "everyone_to_just_one_repo",
-		Subjects: []rbac.Subject{{Kind: "User", Name: rbac.AnonymousUsername}},
-		RoleName: "everything",
-		Scopes:   []regexp.Regexp{*regexp.MustCompile("^public/.+$")},
-	})
-
-	return handler.NewHandler(*cfg)
-}
-
-func TestBlobsUploadsPost(t *testing.T) {
-	data := []byte("hello world")
-	dgst, err := digest.NewHasher("sha256")
-	if err != nil {
-		t.Fatal(err)
+			if auth != "" {
+				r.Header.Set("Authorization", auth)
+			}
+			return r
+		}
 	}
-	if _, err := dgst.Write(data); err != nil {
-		t.Fatal(err)
+	reqPut := func(repo, auth string, queries map[string]string, body []byte) func(prevResp *http.Response) *http.Request {
+		return func(prev *http.Response) *http.Request {
+			uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+			url := fmt.Sprintf("/v2/%s/blobs/uploads/%s", repo, uuid)
+			r := httptest.NewRequest(http.MethodPut, url, bytes.NewReader(body))
+			for k, v := range queries {
+				q := r.URL.Query()
+				q.Add(k, v)
+				r.URL.RawQuery = q.Encode()
+			}
+			if auth != "" {
+				r.Header.Set("Authorization", auth)
+			}
+			r.Header.Set("Content-Type", "application/octet-stream")
+			r.Header.Set("Content-Length", fmt.Sprint(len(body)))
+			if len(body) > 0 {
+				r.Header.Set("Content-Range", fmt.Sprintf("0-%d", len(body)))
+			}
+			return r
+		}
 	}
-	hash := dgst.GetHashAsString()
 
 	tests := []struct {
-		name           string
-		requests       []func(prevResp *http.Response) *http.Request
-		expectedStatus []int
+		name     string
+		requests []testRequestBuilder
 	}{
 		{
 			name: "successful POST then PUT initiation",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"digest": "sha256:" + testBlobDigest},
+						testBlob,
+					),
+					http.StatusCreated,
 				},
 			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusCreated,
+		},
+		{
+			name: "single successful POST",
+			requests: []testRequestBuilder{
+				{
+					func(_ *http.Response) *http.Request {
+						repo := "myrepo/myimage"
+						url := fmt.Sprintf("/v2/%s/blobs/uploads", repo)
+						r := httptest.NewRequest(http.MethodPost, url, bytes.NewReader(testBlob))
+						q := r.URL.Query()
+						q.Add("digest", "sha256:"+testBlobDigest)
+						r.URL.RawQuery = q.Encode()
+						r.Header.Set("Authorization", testAuthHeader)
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Length", fmt.Sprint(len(testBlob)))
+						r.Header.Set("Content-Range", "0-"+fmt.Sprint(len(testBlob)))
+						return r
+					},
+					http.StatusCreated,
+				},
 			},
 		},
 		{
 			name: "unauthorized, no auth header",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					return httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", "", map[string]string{}),
+					http.StatusUnauthorized,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusUnauthorized,
 			},
 		},
 		{
 			name: "forbidden, for PUT request",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeaderWithoutPerms)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeaderWithoutPerms,
+						map[string]string{"digest": "sha256:" + testBlobDigest},
+						testBlob,
+					),
+					http.StatusUnauthorized,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusUnauthorized,
 			},
 		},
 		{
-			name: "forbidden, anonymous user for PUT request",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			name: "unsuccessful PUT with invalid digest",
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"digest": "invalid"},
+						testBlob,
+					),
+					http.StatusBadRequest,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusUnauthorized,
-			},
-		},
-		{
-			name: "forbidden, authenticated but no permission",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeaderWithoutPerms)
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusUnauthorized,
 			},
 		},
 		{
 			name: "invalid repository name",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/invalid%20repo%20name%21/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("invalid%20repo%20name%21", testAuthHeader, map[string]string{}),
+					http.StatusNotFound,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusNotFound,
 			},
 		},
 		{
 			name: "invalid digest",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:abc")
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"digest": "sha256:abc"},
+						testBlob,
+					),
+					http.StatusBadRequest,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusBadRequest,
 			},
 		},
 		{
 			name: "unknown digest",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					invalidDgst := "f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4" // "invalid"
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+invalidDgst)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"digest": "sha256:f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4"},
+						testBlob,
+					),
+					http.StatusBadRequest,
 				},
 			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusBadRequest,
+		},
+		{
+			name: "successful mount",
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
+				},
+				{
+					reqPut(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"digest": "sha256:" + testBlobDigest},
+						testBlob,
+					),
+					http.StatusCreated,
+				},
+				{
+					reqPost(
+						"anotherrepo/otherimage",
+						testAuthHeader,
+						map[string]string{
+							"mount": "sha256:" + testBlobDigest,
+							"from":  "myrepo/myimage",
+						},
+					),
+					http.StatusCreated,
+				},
+			},
+		},
+		{
+			name: "mount not found",
+			requests: []testRequestBuilder{
+				{
+					reqPost(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"mount": "sha256:" + testBlobDigest},
+					),
+					http.StatusAccepted,
+				},
+			},
+		},
+		{
+			name: "invalid mount",
+			requests: []testRequestBuilder{
+				{
+					reqPost(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"mount": "invalid mount"},
+					),
+					http.StatusBadRequest,
+				},
+			},
+		},
+		{
+			name: "from without permissions",
+			requests: []testRequestBuilder{
+				{
+					reqPost(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"mount": "sha256:" + testBlobDigest},
+					),
+					http.StatusAccepted,
+				},
+				{
+					reqPost(
+						"public/from_myrepo_myimage",
+						"",
+						map[string]string{
+							"mount": "sha256:" + testBlobDigest,
+							"from":  "myrepo/myimage",
+						},
+					),
+					http.StatusUnauthorized,
+				},
+			},
+		},
+		{
+			name: "invalid from",
+			requests: []testRequestBuilder{
+				{
+					reqPost(
+						"myrepo/myimage",
+						testAuthHeader,
+						map[string]string{"from": "invalid from"},
+					),
+					http.StatusBadRequest,
+				},
 			},
 		},
 		{
 			name: "unknown uuid",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					uuid := "da551e8f-e411-4f93-bd29-481e481c6dbb"
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+			requests: []testRequestBuilder{
+				{
+					func(_ *http.Response) *http.Request {
+						url := "/v2/myrepo/myimage/blobs/uploads/da551e8f-e411-4f93-bd29-481e481c6dbb"
+						r := httptest.NewRequest(http.MethodPut, url, bytes.NewReader(testBlob))
+						q := r.URL.Query()
+						q.Add("digest", "sha256:"+testBlobDigest)
+						r.URL.RawQuery = q.Encode()
+						r.Header.Set("Authorization", testAuthHeader)
+						return r
+					},
+					http.StatusNotFound,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusNotFound,
 			},
 		},
 		{
 			name: "empty blob",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					data := []byte("")
-
-					dgst, err := digest.NewHasher("sha256")
-					if err != nil {
-						t.Fatal(err)
-					}
-					if _, err := dgst.Write(data); err != nil {
-						t.Fatal(err)
-					}
-					hash := dgst.GetHashAsString()
-
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						emptyHash := "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s?digest=%s", uuid, emptyHash)
+						r := httptest.NewRequest(http.MethodPut, url, nil)
+						r.Header.Set("Authorization", testAuthHeader)
+						return r
+					},
+					http.StatusCreated,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusCreated,
-			},
-		},
-		{
-			name: "single POST request",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads", nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusCreated,
-			},
-		},
-		{
-			name: "POST with mount and empty from",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
-				},
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/anotherrepo/anotherimage/blobs/uploads", nil)
-					q := r.URL.Query()
-					q.Add("mount", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusCreated,
-				http.StatusCreated,
-			},
-		},
-		{
-			name: "POST with mount and unknown from",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/anotherrepo/anotherimage/blobs/uploads", nil)
-					q := r.URL.Query()
-					q.Add("mount", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-			},
-		},
-		{
-			name: "POST with mount and not allowed from",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads", nil)
-					q := r.URL.Query()
-					q.Add("digest", "sha256:"+hash)
-					r.URL.RawQuery = q.Encode()
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
-				},
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/public/anom/blobs/uploads", nil)
-					q := r.URL.Query()
-					q.Add("mount", "sha256:"+hash)
-					q.Add("from", "myrepo/myimage")
-					r.URL.RawQuery = q.Encode()
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusCreated,
-				http.StatusUnauthorized,
 			},
 		},
 		{
 			name: "successful GET",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+				{
+					func(prevResp *http.Response) *http.Request {
+						uuid := prevResp.Header.Get(testHeaderDockerUploadUUID)
+						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
+						r := httptest.NewRequest(http.MethodGet, url, nil)
+						r.Header.Set("Authorization", testAuthHeader)
+						return r
+					},
+					http.StatusNoContent,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusNoContent,
 			},
 		},
 		{
-			name: "unauthorized GET as anonymous",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(_ *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			name: "unsuccessful GET, without auth",
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					return r
+				{
+					func(prevResp *http.Response) *http.Request {
+						uuid := prevResp.Header.Get(testHeaderDockerUploadUUID)
+						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
+						r := httptest.NewRequest(http.MethodGet, url, nil)
+						return r
+					},
+					http.StatusUnauthorized,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusUnauthorized,
-			},
-		},
-		{
-			name: "successful PATCH",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusAccepted,
 			},
 		},
 		{
 			name: "successful PATCH by ranges",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", "0-2")
-					r.Header.Set("Content-Length", "2")
-					r.Body = io.NopCloser(bytes.NewReader([]byte("ho")))
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("ho"))
+						r.Header.Set("Authorization", testAuthHeader)
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Range", "0-2")
+						r.Header.Set("Content-Length", "2")
+						return r
+					},
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", "2-4")
-					r.Header.Set("Content-Length", "2")
-					r.Body = io.NopCloser(bytes.NewReader([]byte("la")))
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("la"))
+						r.Header.Set("Authorization", testAuthHeader)
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Range", "2-4")
+						r.Header.Set("Content-Length", "2")
+						return r
+					},
+					http.StatusAccepted,
 				},
 			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusAccepted,
-				http.StatusAccepted,
+		},
+		{
+			name: "unsuccessful PATCH with invalid ranges",
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
+				},
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("ho"))
+						r.Header.Set("Authorization", testAuthHeader)
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Range", "1-3")
+						r.Header.Set("Content-Length", "2")
+						return r
+					},
+					http.StatusRequestedRangeNotSatisfiable,
+				},
+			},
+		},
+		{
+			name: "unsuccessful PATCH for unknown blob",
+			requests: []testRequestBuilder{
+				{
+					func(_ *http.Response) *http.Request {
+						uuid := "8fb11ce6-e936-4cfc-aea9-f2d41c1a967c"
+						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("hola"))
+						r.Header.Set("Authorization", testAuthHeader)
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Range", "0-4")
+						r.Header.Set("Content-Length", "4")
+						return r
+					},
+					http.StatusNotFound,
+				},
 			},
 		},
 		{
 			name: "unsuccessful PATCH with invalid Content-Type",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
+						r := httptest.NewRequest(http.MethodPatch, url, bytes.NewReader(testBlob))
+						r.Header.Set("Authorization", testAuthHeader)
+						// Without Content-Type on proposal.
+						r.Header.Set("Content-Range", fmt.Sprintf("0-%s", fmt.Sprint(len(testBlob))))
+						return r
+					},
+					http.StatusBadRequest,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusBadRequest,
 			},
 		},
 		{
-			name: "unsuccessful PATCH with unauthorized user",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			name: "unsuccessful PATCH without auth",
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
+						r := httptest.NewRequest(http.MethodPatch, url, bytes.NewReader(testBlob))
+						r.Header.Set("Content-Type", "application/octet-stream")
+						r.Header.Set("Content-Range", fmt.Sprintf("0-%s", fmt.Sprint(len(testBlob))))
+						return r
+					},
+					http.StatusUnauthorized,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusUnauthorized,
-			},
-		},
-		{
-			name: "unsuccessful PATCH with invalid UUID",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					uuid := "da551e8f-e411-4f93-bd29-481e481c6dbb"
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, len(data)))
-					r.Header.Set("Content-Length", fmt.Sprint(len(data)))
-					r.Body = io.NopCloser(bytes.NewReader(data))
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusNotFound,
-			},
-		},
-		{
-			name: "unsuccessful PATCH with invalid Content-Range",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", "0-1")
-					r.Header.Set("Content-Length", "1")
-					r.Body = io.NopCloser(bytes.NewReader([]byte{data[0]}))
-					return r
-				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					r.Header.Set("Content-Type", "application/octet-stream")
-					r.Header.Set("Content-Range", "2-3")
-					r.Header.Set("Content-Length", "1")
-					r.Body = io.NopCloser(bytes.NewReader([]byte{data[2]}))
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusAccepted,
-				http.StatusRequestedRangeNotSatisfiable,
 			},
 		},
 		{
 			name: "successful DELETE",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					reqPost("myrepo/myimage", testAuthHeader, map[string]string{}),
+					http.StatusAccepted,
 				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
+						r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
+						r.Header.Set("Authorization", testAuthHeader)
+						return r
+					},
+					http.StatusNoContent,
 				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusNoContent,
-			},
-		},
-		{
-			name: "unsuccessful DELETE by anonymous user",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
-				},
-				func(prevResp *http.Response) *http.Request {
-					uuid := prevResp.Header.Get("Docker-Upload-UUID")
-					r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					return r
-				},
-			},
-			expectedStatus: []int{
-				http.StatusAccepted,
-				http.StatusUnauthorized,
 			},
 		},
 		{
 			name: "unsuccessful DELETE with unknown UUID",
-			requests: []func(prevResp *http.Response) *http.Request{
-				func(prevResp *http.Response) *http.Request {
-					uuid := "da551e8f-e411-4f93-bd29-481e481c6dbb"
-					r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-					r.Header.Set("Authorization", testAuthHeader)
-					return r
+			requests: []testRequestBuilder{
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := "8fb11ce6-e936-4cfc-aea9-f2d41c1a967c"
+						r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
+						r.Header.Set("Authorization", testAuthHeader)
+						return r
+					},
+					http.StatusNotFound,
 				},
 			},
-			expectedStatus: []int{
-				http.StatusNotFound,
+		},
+		{
+			name: "unsuccessful DELETE without auth",
+			requests: []testRequestBuilder{
+				{
+					func(prev *http.Response) *http.Request {
+						uuid := "8fb11ce6-e936-4cfc-aea9-f2d41c1a967c"
+						r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
+						return r
+					},
+					http.StatusUnauthorized,
+				},
 			},
 		},
 	}
@@ -679,22 +534,18 @@ func TestBlobsUploadsPost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			mux := setupTestServeMux(t)
+			mux := testSetupTestServeMux(t)
 
 			var prev *http.Response
-			for i, fnr := range tt.requests {
+			for i, trb := range tt.requests {
 				w := httptest.NewRecorder()
-				r := fnr(prev)
+				r := trb.requestFn(prev)
 				mux.ServeHTTP(w, r)
 				prev = w.Result()
 
-				if prev != nil && prev.StatusCode != tt.expectedStatus[i] {
-					d, _ := io.ReadAll(prev.Body)
-					if len(d) > 0 {
-						t.Log(string(d))
-					}
-					t.Errorf("%q: expected status %d, got %d", tt.name, tt.expectedStatus[i], prev.StatusCode)
+				if prev.StatusCode != trb.statusCode {
+					body, _ := io.ReadAll(prev.Body)
+					t.Errorf("step: %d, want %d, got %d. body: %s", i+1, trb.statusCode, prev.StatusCode, string(body))
 				}
 			}
 		})
