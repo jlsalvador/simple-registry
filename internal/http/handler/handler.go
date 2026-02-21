@@ -142,7 +142,7 @@ func (m *ServeMux) registerRoutes() {
 	if m.cfg.IsUIEnabled {
 		routes = append(routes, route.NewRoute(
 			http.MethodGet,
-			"^/ui",
+			"^/ui(?:/.*)?$",
 			m.UI,
 		))
 

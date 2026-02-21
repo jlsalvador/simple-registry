@@ -17,11 +17,12 @@ func (m *ServeMux) UI(w http.ResponseWriter, r *http.Request) {
 	// 1. Clean the path to match the embed FS structure.
 	// If the handler is served at "/ui/", we need to be careful with the prefix.
 	// Assuming the request path is /ui/css/style.css, we want ui/css/style.css
-	path := strings.TrimPrefix(r.URL.Path, "/")
+	path := strings.Trim(r.URL.Path, "/")
 
 	// If path is empty (root), set it to index.html to avoid directory listing issues
-	if path == "ui" || path == "ui/" {
-		path = "ui/index.html"
+	if path == "ui" {
+		path = "/ui/index.html"
+		r.URL.Path = path
 	}
 
 	// 2. Try to locate the file in the embedded filesystem.
