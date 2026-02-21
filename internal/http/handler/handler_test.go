@@ -88,6 +88,8 @@ func testSetupTestServeMux(t *testing.T) http.Handler {
 		Scopes:   []regexp.Regexp{*regexp.MustCompile("^public/.+$")},
 	})
 
+	cfg.IsUIEnabled = true
+
 	return handler.NewHandler(*cfg)
 }
 
