@@ -16,6 +16,8 @@ package config_test
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -164,6 +166,90 @@ spec:
 		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
 		if err == nil {
 			t.Fatalf("expected regexp error")
+		}
+	})
+}
+
+func TestGetProxiesFromManifests(t *testing.T) {
+	t.Run("parse valid proxy with string password", func(t *testing.T) {
+		data := `
+apiVersion: ` + config.ApiVersion + `
+kind: PullThroughCache
+metadata:
+  name: cache
+spec:
+  upstream:
+    url: https://registry.example.com
+    username: user1
+    password: secretpassword
+  scopes: ["library/.*"]
+`
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		proxies, err := config.GetProxiesFromManifests(m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(proxies) != 1 {
+			t.Fatalf("expected 1 proxy, got %d", len(proxies))
+		}
+		if proxies[0].Password != "secretpassword" {
+			t.Fatalf("expected 'secretpassword', got %v", proxies[0].Password)
+		}
+	})
+
+	t.Run("parse valid proxy with password file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		pwdFile := filepath.Join(tmpDir, "pwd.txt")
+		os.WriteFile(pwdFile, []byte("filepassword"), 0644)
+
+		data := `
+apiVersion: ` + config.ApiVersion + `
+kind: PullThroughCache
+metadata:
+  name: cache
+spec:
+  upstream:
+    passwordFile: ` + pwdFile + `
+`
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		proxies, err := config.GetProxiesFromManifests(m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(proxies) != 1 {
+			t.Fatalf("expected 1 proxy")
+		}
+		if proxies[0].Password != "filepassword" {
+			t.Fatalf("expected 'filepassword', got %v", proxies[0].Password)
+		}
+	})
+
+	t.Run("parse proxy with invalid password file", func(t *testing.T) {
+		data := `
+apiVersion: ` + config.ApiVersion + `
+kind: PullThroughCache
+metadata:
+  name: cache
+spec:
+  upstream:
+    passwordFile: /does/not/exist.txt
+`
+		m, err := yamlscheme.DecodeAll(strings.NewReader(data))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		_, err = config.GetProxiesFromManifests(m)
+		if err == nil {
+			t.Fatal("expected error reading non-existent password file")
 		}
 	})
 }
