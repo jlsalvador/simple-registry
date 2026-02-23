@@ -1,3 +1,17 @@
+// Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package proxy
 
 import (
@@ -14,7 +28,7 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
-func (s *ProxyDataStorage) matchProxy(repo string) *Proxy {
+func (s *ProxyDataStorage) MatchProxy(repo string) *Proxy {
 	for _, p := range s.Proxies {
 		for _, scope := range p.Scopes {
 			if regexp.MustCompile(scope).MatchString(repo) {
@@ -32,7 +46,7 @@ var manifestAccept = []string{
 	registry.MediaTypeDockerManifestList,
 }
 
-func newUpstreamRequest(
+func NewUpstreamRequest(
 	proxy *Proxy,
 	method string,
 	url string,
@@ -54,11 +68,10 @@ func newUpstreamRequest(
 	return req, nil
 }
 
-func doUpstreamRequest(
+func DoUpstreamRequest(
 	proxy *Proxy,
 	req *http.Request,
 ) (*http.Response, error) {
-
 	client := &http.Client{Timeout: proxy.Timeout}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -91,7 +104,7 @@ func doUpstreamRequest(
 	return client.Do(req2)
 }
 
-func fetchManifestFromUpstream(
+func FetchManifestFromUpstream(
 	proxy *Proxy,
 	repo string,
 	reference string,
@@ -103,12 +116,12 @@ func fetchManifestFromUpstream(
 		reference,
 	)
 
-	req, err := newUpstreamRequest(proxy, http.MethodGet, url, manifestAccept)
+	req, err := NewUpstreamRequest(proxy, http.MethodGet, url, manifestAccept)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	resp, err := doUpstreamRequest(proxy, req)
+	resp, err := DoUpstreamRequest(proxy, req)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -130,7 +143,7 @@ func fetchManifestFromUpstream(
 	return resp.Body, resp.ContentLength, nil
 }
 
-func fetchBlobFromUpstream(
+func FetchBlobFromUpstream(
 	proxy *Proxy,
 	repo string,
 	digest string,
@@ -142,12 +155,12 @@ func fetchBlobFromUpstream(
 		digest,
 	)
 
-	req, err := newUpstreamRequest(proxy, http.MethodGet, url, nil)
+	req, err := NewUpstreamRequest(proxy, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	resp, err := doUpstreamRequest(proxy, req)
+	resp, err := DoUpstreamRequest(proxy, req)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -169,7 +182,7 @@ func fetchBlobFromUpstream(
 	return resp.Body, resp.ContentLength, nil
 }
 
-func fetchTagsFromUpstream(
+func FetchTagsFromUpstream(
 	proxy *Proxy,
 	repo string,
 ) ([]string, error) {
@@ -179,12 +192,12 @@ func fetchTagsFromUpstream(
 		repo,
 	)
 
-	req, err := newUpstreamRequest(proxy, http.MethodGet, url, nil)
+	req, err := NewUpstreamRequest(proxy, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := doUpstreamRequest(proxy, req)
+	resp, err := DoUpstreamRequest(proxy, req)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +223,7 @@ func fetchTagsFromUpstream(
 	return out.Tags, nil
 }
 
-func fetchReferrersFromUpstream(
+func FetchReferrersFromUpstream(
 	proxy Proxy,
 	repo,
 	dgst string,
@@ -229,7 +242,7 @@ func fetchReferrersFromUpstream(
 		req.SetBasicAuth(proxy.Username, proxy.Password)
 	}
 
-	resp, err := doUpstreamRequest(&proxy, req)
+	resp, err := DoUpstreamRequest(&proxy, req)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +272,7 @@ func fetchReferrersFromUpstream(
 	}, nil
 }
 
-func fetchManifestDigestHEAD(
+func FetchManifestDigestHEAD(
 	proxy *Proxy,
 	repo,
 	reference string,
@@ -271,12 +284,12 @@ func fetchManifestDigestHEAD(
 		reference,
 	)
 
-	req, err := newUpstreamRequest(proxy, http.MethodHead, url, manifestAccept)
+	req, err := NewUpstreamRequest(proxy, http.MethodHead, url, manifestAccept)
 	if err != nil {
 		return "", err
 	}
 
-	resp, err := doUpstreamRequest(proxy, req)
+	resp, err := DoUpstreamRequest(proxy, req)
 	if err != nil {
 		return "", err
 	}

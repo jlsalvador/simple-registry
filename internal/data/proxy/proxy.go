@@ -27,13 +27,13 @@ func (s *ProxyDataStorage) BlobsGet(repo, digest string) (r io.ReadCloser, size 
 	}
 
 	// Find matching proxy.
-	proxy := s.matchProxy(repo)
+	proxy := s.MatchProxy(repo)
 	if proxy == nil {
 		return nil, -1, fs.ErrNotExist
 	}
 
 	// Fetch from upstream.
-	upstreamReader, size, err := fetchBlobFromUpstream(proxy, repo, digest)
+	upstreamReader, size, err := FetchBlobFromUpstream(proxy, repo, digest)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -67,7 +67,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 		return nil, -1, "", ErrDataStorageNotInitialized
 	}
 
-	proxy := s.matchProxy(repo)
+	proxy := s.MatchProxy(repo)
 	isDigest := registry.RegExprDigest.MatchString(reference)
 	isTag := registry.RegExprTag.MatchString(reference)
 
@@ -77,7 +77,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	if proxy != nil && !isDigest && isTag {
 
 		// Fetch lastest digest for this tag from upstream.
-		upstreamDigest, _ = fetchManifestDigestHEAD(proxy, repo, reference)
+		upstreamDigest, _ = FetchManifestDigestHEAD(proxy, repo, reference)
 	}
 
 	// Try to get from local.
@@ -98,7 +98,7 @@ func (s *ProxyDataStorage) ManifestGet(repo, reference string) (
 	}
 
 	// Fetch from upstream.
-	upstreamReader, size, err := fetchManifestFromUpstream(proxy, repo, reference)
+	upstreamReader, size, err := FetchManifestFromUpstream(proxy, repo, reference)
 	if err != nil {
 		return nil, -1, "", err
 	}
@@ -134,13 +134,13 @@ func (s *ProxyDataStorage) ReferrersGet(
 	}
 
 	// Find matching proxy.
-	proxy := s.matchProxy(repo)
+	proxy := s.MatchProxy(repo)
 	if proxy == nil {
 		return nil, fs.ErrNotExist
 	}
 
 	// Fetch from upstream.
-	digests, err = fetchReferrersFromUpstream(*proxy, repo, dgst)
+	digests, err = FetchReferrersFromUpstream(*proxy, repo, dgst)
 	if err != nil {
 		return nil, err
 	}
@@ -155,10 +155,10 @@ func (s *ProxyDataStorage) TagsList(repo string) ([]string, error) {
 		return nil, ErrDataStorageNotInitialized
 	}
 
-	proxy := s.matchProxy(repo)
+	proxy := s.MatchProxy(repo)
 
 	if proxy != nil {
-		tags, err := fetchTagsFromUpstream(proxy, repo)
+		tags, err := FetchTagsFromUpstream(proxy, repo)
 		if err == nil {
 			return tags, nil
 		}
