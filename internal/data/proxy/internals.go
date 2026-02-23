@@ -75,12 +75,12 @@ func doUpstreamRequest(
 	chHeader := resp.Header.Get("WWW-Authenticate")
 	resp.Body.Close()
 
-	ch, err := parseBearerChallenge(chHeader)
+	ch, err := ParseBearerChallenge(chHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := fetchBearerToken(proxy, ch)
+	token, err := FetchBearerToken(proxy, ch)
 	if err != nil {
 		return nil, err
 	}

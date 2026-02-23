@@ -1,3 +1,17 @@
+// Copyright 2025 José Luis Salvador Rufo <salvador.joseluis@gmail.com>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package proxy
 
 import (
@@ -8,7 +22,7 @@ import (
 	"strings"
 )
 
-type bearerChallenge struct {
+type BearerChallenge struct {
 	Realm   string
 	Service string
 	Scope   string
@@ -16,7 +30,7 @@ type bearerChallenge struct {
 
 //TODO: replace errors by Err const
 
-func parseBearerChallenge(h string) (*bearerChallenge, error) {
+func ParseBearerChallenge(h string) (*BearerChallenge, error) {
 	if !strings.HasPrefix(h, "Bearer ") {
 		return nil, errors.New("not a bearer challenge")
 	}
@@ -24,7 +38,7 @@ func parseBearerChallenge(h string) (*bearerChallenge, error) {
 	h = strings.TrimPrefix(h, "Bearer ")
 	parts := strings.Split(h, ",")
 
-	out := &bearerChallenge{}
+	out := &BearerChallenge{}
 	for _, p := range parts {
 		kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
 		if len(kv) != 2 {
@@ -48,7 +62,7 @@ func parseBearerChallenge(h string) (*bearerChallenge, error) {
 	return out, nil
 }
 
-func fetchBearerToken(proxy *Proxy, ch *bearerChallenge) (string, error) {
+func FetchBearerToken(proxy *Proxy, ch *BearerChallenge) (string, error) {
 	req, err := http.NewRequest(http.MethodGet, ch.Realm, nil)
 	if err != nil {
 		return "", err
