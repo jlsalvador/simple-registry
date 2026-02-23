@@ -15,7 +15,7 @@ import (
 )
 
 func (s *ProxyDataStorage) matchProxy(repo string) *Proxy {
-	for _, p := range s.proxies {
+	for _, p := range s.Proxies {
 		for _, scope := range p.Scopes {
 			if regexp.MustCompile(scope).MatchString(repo) {
 				return &p
