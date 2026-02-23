@@ -26,10 +26,10 @@ func (s *ProxyDataStorage) matchProxy(repo string) *Proxy {
 }
 
 var manifestAccept = []string{
-	"application/vnd.oci.image.manifest.v1+json",
-	"application/vnd.oci.image.index.v1+json",
-	"application/vnd.docker.distribution.manifest.v2+json",
-	"application/vnd.docker.distribution.manifest.list.v2+json",
+	registry.MediaTypeOCIImageManifest,
+	registry.MediaTypeOCIImageIndex,
+	registry.MediaTypeDockerImageManifest,
+	registry.MediaTypeDockerManifestList,
 }
 
 func newUpstreamRequest(
