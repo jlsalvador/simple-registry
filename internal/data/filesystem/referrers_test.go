@@ -44,7 +44,7 @@ func TestReferrersGet(t *testing.T) {
 
 				// Create multiple referrer manifests
 				var referrerDigests []string
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					referrer := createTestManifest(&registry.DescriptorManifest{
 						MediaType: "application/vnd.oci.image.manifest.v1+json",
 						Digest:    subjectDigest,
