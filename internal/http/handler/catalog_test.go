@@ -41,14 +41,14 @@ func TestCatalog(t *testing.T) {
 			},
 		},
 		{
-			name: "unsuccessful index without auth",
+			name: "successful index without auth because anonymous user is enabled",
 			requests: []testRequestBuilder{
 				{
 					func(_ *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodGet, "/v2/", nil)
 						return r
 					},
-					http.StatusUnauthorized,
+					http.StatusOK,
 				},
 			},
 		},
