@@ -27,6 +27,7 @@ func baseEngine(t *testing.T) rbac.Engine {
 	return rbac.Engine{
 		Users: []rbac.User{
 			{Name: "admin", Groups: []string{"admins"}},
+			{Name: rbac.AnonymousUsername, Groups: []string{"public"}},
 		},
 		Roles: []rbac.Role{
 			{
@@ -40,6 +41,14 @@ func baseEngine(t *testing.T) rbac.Engine {
 					http.MethodPatch,
 				},
 			},
+			{
+				Name:      "public",
+				Resources: []string{"*"},
+				Verbs: []string{
+					http.MethodHead,
+					http.MethodGet,
+				},
+			},
 		},
 		RoleBindings: []rbac.RoleBinding{
 			{
@@ -48,6 +57,12 @@ func baseEngine(t *testing.T) rbac.Engine {
 				RoleName: "admins",
 				Scopes:   []regexp.Regexp{*regexp.MustCompile("^.*$")},
 			},
+			{
+				Name:     "allow-public",
+				Subjects: []rbac.Subject{{Kind: "Group", Name: "public"}},
+				RoleName: "public",
+				Scopes:   []regexp.Regexp{*regexp.MustCompile("^library/[^/]+$")},
+			},
 		},
 	}
 }
@@ -55,6 +70,8 @@ func baseEngine(t *testing.T) rbac.Engine {
 func TestIsAllowed_FullCoverage(t *testing.T) {
 
 	t.Run("user does not exist", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 
 		if engine.IsAllowed("ghost", "blobs", "library/busybox", http.MethodGet) {
@@ -62,7 +79,50 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 		}
 	})
 
+	t.Run("anonymous access is enabled", func(t *testing.T) {
+		t.Parallel()
+
+		engine := baseEngine(t)
+
+		if !engine.IsAllowed(rbac.AnonymousUsername, "", "", http.MethodGet) {
+			t.Fatal("expected access granted")
+		}
+	})
+
+	t.Run("anonymous access is NOT enabled", func(t *testing.T) {
+		t.Parallel()
+
+		engine := baseEngine(t)
+
+		engine.Users = engine.Users[0:1] // Remove anonymous user.
+		if engine.IsAllowed(rbac.AnonymousUsername, "", "", http.MethodGet) {
+			t.Fatal("expected access denied")
+		}
+	})
+
+	t.Run("anonymous user can GET library/busybox", func(t *testing.T) {
+		t.Parallel()
+
+		engine := baseEngine(t)
+
+		if !engine.IsAllowed(rbac.AnonymousUsername, "blobs", "library/busybox", http.MethodGet) {
+			t.Fatal("expected access granted")
+		}
+	})
+
+	t.Run("anonymous user can NOT PUT library/busybox", func(t *testing.T) {
+		t.Parallel()
+
+		engine := baseEngine(t)
+
+		if engine.IsAllowed(rbac.AnonymousUsername, "blobs", "library/busybox", http.MethodPut) {
+			t.Fatal("expected access denied")
+		}
+	})
+
 	t.Run("role does not exist", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 		engine.RoleBindings = []rbac.RoleBinding{
 			{
@@ -79,6 +139,8 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	})
 
 	t.Run("subject mismatch", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 		engine.RoleBindings = []rbac.RoleBinding{
 			{
@@ -95,6 +157,8 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	})
 
 	t.Run("scope does not match repo", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 		engine.RoleBindings = []rbac.RoleBinding{
 			{
@@ -111,6 +175,8 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	})
 
 	t.Run("resource not allowed", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 		engine.Roles = []rbac.Role{
 			{
@@ -137,6 +203,8 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	})
 
 	t.Run("verb not allowed", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 		engine.Roles = []rbac.Role{
 			{
@@ -163,6 +231,8 @@ func TestIsAllowed_FullCoverage(t *testing.T) {
 	})
 
 	t.Run("allowed", func(t *testing.T) {
+		t.Parallel()
+
 		engine := baseEngine(t)
 
 		if !engine.IsAllowed("admin", "blobs", "library/busybox", http.MethodPost) {

@@ -37,6 +37,11 @@ func (e *Engine) IsAllowed(username string, resource string, scope string, verb 
 		return false
 	}
 
+	// If user is anonymous, and resource and scope is empty, return true.
+	if user.Name == AnonymousUsername && resource == "" && scope == "" {
+		return true
+	}
+
 	for _, rb := range e.RoleBindings {
 		// Match role.
 		if i := slices.IndexFunc(e.Roles, func(r Role) bool {
