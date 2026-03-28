@@ -53,6 +53,7 @@ func blobsUploadsPostMount(
 			return
 		}
 
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -60,16 +61,19 @@ func blobsUploadsPostMount(
 
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	if err := cfg.Data.BlobsUploadWrite(repo, uuid, f, -1); err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 
 	if err := cfg.Data.BlobsUploadCommit(repo, uuid, mount); err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -91,14 +95,17 @@ func blobsUploadsPostSingle(
 ) {
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	if err := cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, 0); err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
 	if err := cfg.Data.BlobsUploadCommit(repo, uuid, digest); err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -117,6 +124,7 @@ func blobsUploadsPostThenPut(
 ) {
 	uuid, err := cfg.Data.BlobsUploadCreate(repo)
 	if err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -162,13 +170,16 @@ func (m *ServeMux) BlobsUploadsPost(
 ) {
 	username, err := m.authenticate(w, r)
 	if err != nil {
+		LogError(err)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 
@@ -178,26 +189,34 @@ func (m *ServeMux) BlobsUploadsPost(
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusUnauthorized)
+		json.NewEncoder(w).Encode(ErrorUnauthorized)
 		return
 	}
 
 	// Case 1. Mount blob from other repository.
 	mount := r.URL.Query().Get("mount")
 	if mount != "" && !registry.RegExprDigest.MatchString(mount) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorDigestInvalid)
 		return
 	}
 	from := r.URL.Query().Get("from")
 	if from != "" && !registry.RegExprName.MatchString(from) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 	// Check if the user can pull the other repository.
 	// `from` could be empty if automatic content discovery is enabled.
 	if mount != "" {
 		if !m.cfg.Rbac.IsAllowed(username, "blobs", from, netHttp.MethodGet) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorUnauthorized)
 			return
 		}
 
@@ -238,20 +257,25 @@ func (m *ServeMux) BlobsUploadsGet(
 ) {
 	username, err := m.authenticate(w, r)
 	if err != nil {
+		LogError(err)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if !registry.RegExprUUID.MatchString(uuid) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorBlobUploadInvalid)
 		return
 	}
 
@@ -261,12 +285,15 @@ func (m *ServeMux) BlobsUploadsGet(
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusUnauthorized)
+		json.NewEncoder(w).Encode(ErrorUnauthorized)
 		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -306,26 +333,33 @@ func (m *ServeMux) BlobsUploadsPatch(
 ) {
 	username, err := m.authenticate(w, r)
 	if err != nil {
+		LogError(err)
 		return
 	}
 
 	// Validate request Content-Type header.
 	if r.Header.Get("Content-Type") != "application/octet-stream" {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorBlobUploadInvalid)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if !registry.RegExprUUID.MatchString(uuid) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorBlobUploadInvalid)
 		return
 	}
 
@@ -335,17 +369,22 @@ func (m *ServeMux) BlobsUploadsPatch(
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusUnauthorized)
+		json.NewEncoder(w).Encode(ErrorUnauthorized)
 		return
 	}
 
 	size, err := m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorBlobUploadUnknown)
 			return
 		}
 
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -357,13 +396,16 @@ func (m *ServeMux) BlobsUploadsPatch(
 
 	// Check if the range is valid.
 	if start >= 0 && start != size {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusRequestedRangeNotSatisfiable)
+		json.NewEncoder(w).Encode(ErrorSizeInvalid)
 		return
 	}
 
 	if err := m.cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, start); err != nil {
 		// fs.ErrNotExist was triggered by BlobsUploadSize.
 
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -371,6 +413,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	// Update the size of the blob.
 	size, err = m.cfg.Data.BlobsUploadSize(repo, uuid)
 	if err != nil {
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -411,27 +454,34 @@ func (m *ServeMux) BlobsUploadsPut(
 ) {
 	username, err := m.authenticate(w, r)
 	if err != nil {
+		LogError(err)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if !registry.RegExprUUID.MatchString(uuid) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorBlobUploadInvalid)
 		return
 	}
 
 	// "digest" must be a valid digest.
 	digest := r.URL.Query().Get("digest")
 	if !registry.RegExprDigest.MatchString(digest) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorDigestInvalid)
 		return
 	}
 
@@ -441,7 +491,9 @@ func (m *ServeMux) BlobsUploadsPut(
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusUnauthorized)
+		json.NewEncoder(w).Encode(ErrorUnauthorized)
 		return
 	}
 
@@ -456,10 +508,13 @@ func (m *ServeMux) BlobsUploadsPut(
 		if err := m.cfg.Data.BlobsUploadWrite(repo, uuid, r.Body, start); err != nil {
 			// Docker expects 404 when the blob does not exist
 			if errors.Is(err, fs.ErrNotExist) {
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(netHttp.StatusNotFound)
+				json.NewEncoder(w).Encode(ErrorBlobUploadUnknown)
 				return
 			}
 
+			LogError(err)
 			w.WriteHeader(netHttp.StatusInternalServerError)
 			return
 		}
@@ -470,28 +525,20 @@ func (m *ServeMux) BlobsUploadsPut(
 	if err := m.cfg.Data.BlobsUploadCommit(repo, uuid, digest); err != nil {
 		// Docker expects 404 when the blob does not exist
 		if errors.Is(err, fs.ErrNotExist) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorBlobUploadUnknown)
 			return
 		}
 
 		if errors.Is(err, data.ErrDigestMismatch) {
-			e := registry.OciErrorResponse{
-				Errors: []registry.OciError{
-					{
-						Code:    "DIGEST_INVALID",
-						Message: "provided digest did not match uploaded content",
-						Detail:  digest,
-					},
-				},
-			}
-			s, _ := json.Marshal(e)
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Content-Length", fmt.Sprint(len(s)))
 			w.WriteHeader(netHttp.StatusBadRequest)
-			w.Write(s)
+			json.NewEncoder(w).Encode(ErrorDigestInvalid)
 			return
 		}
 
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
@@ -528,20 +575,25 @@ func (m *ServeMux) BlobsUploadsDelete(
 ) {
 	username, err := m.authenticate(w, r)
 	if err != nil {
+		LogError(err)
 		return
 	}
 
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorNameInvalid)
 		return
 	}
 
 	// "uuid" must be a valid UUID.
 	uuid := r.PathValue("uuid")
 	if !registry.RegExprUUID.MatchString(uuid) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorBlobUploadInvalid)
 		return
 	}
 
@@ -551,15 +603,21 @@ func (m *ServeMux) BlobsUploadsDelete(
 			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusUnauthorized)
+		json.NewEncoder(w).Encode(ErrorUnauthorized)
 		return
 	}
 
 	if err := m.cfg.Data.BlobsUploadCancel(repo, uuid); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorBlobUploadUnknown)
 			return
 		}
+
+		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
