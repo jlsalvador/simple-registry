@@ -23,7 +23,7 @@ simple-registry serve \
 Clients requires HTTPS and a valid TLS certificate to connect.
 For production, use the `-cert` and `-key` flags to enable HTTPS.
 
-> **ℹ️ Note:**
+> [!TIP]
 > Docker client will accept HTTP for localhost connections.
 
 You can use your own TLS certificates or generate a self-signed one for
@@ -47,7 +47,7 @@ simple-registry serve \
   -key tls.key
 ```
 
-> **ℹ️ Note:**
+> [!TIP]
 > Podman client can skip TLS verification with the flag `--tls-verify=false`.
 
 ```sh

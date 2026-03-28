@@ -77,7 +77,7 @@ mark its dependencies. It supports the following media types:
 * **Referrers**:
   Artifacts referencing the analyzed manifests.
 
-> **ℹ️ Note:**
+> [!NOTE]
 > If a **Pull-Through Cache** is configured, the garbage collector operates
 > only on local data. It will not trigger a "mirror" (download) from the
 > upstream registry during the marking phase.

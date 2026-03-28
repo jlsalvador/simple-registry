@@ -6,7 +6,7 @@ This means that you can pull images from your simple-registry instance, and your
 request will be forwarded to one or more upstream registries. The image will be
 cached into your simple-registry.
 
-> **ℹ️ Note:**
+> [!NOTE]
 > simple-registry always pull the image from the upstream to ensure it's
 > up-to-date. If upstream is down, simple-registry will return its latest
 > cached copy if it exist.
@@ -53,7 +53,7 @@ spec:
    - "^my-github-user/.+$"
 ```
 
-> ⚠️ **Security note:**
+> [!WARNING]
 > When pull-through caching is enabled with upstream credentials, all repositories
 > accessible by those credentials may become available through this registry.
 > Use dedicated upstream accounts with minimal permissions.

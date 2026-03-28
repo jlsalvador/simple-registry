@@ -35,7 +35,7 @@ simple-registry serve \
   -adminpwd secret
 ```
 
-> **ℹ️ Note:**
+> [!NOTE]
 > You can see more options by running `simple-registry serve -h`.
 
 ### 2. Usage Example
@@ -96,7 +96,7 @@ syntax:
 - [Production-grade guide](docs/production-grade.md)
 - [Pull-Through Cache](docs/pull-through-cache.md)
 
-> **ℹ️ Note:**
+> [!NOTE]
 > There are some manifests examples in [docs/examples](docs/examples)
 
 ---

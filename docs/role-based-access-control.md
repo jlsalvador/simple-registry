@@ -44,7 +44,7 @@ spec:
   - admins
 ```
 
-> **ℹ️ Note:**
+> [!NOTE]
 > [See more User manifests examples here](./examples/users.yaml).
 
 ### User Fields
@@ -102,7 +102,7 @@ spec:
   - GET
 ```
 
-> **ℹ️ Note:**
+> [!NOTE]
 > [See more Role manifests examples here](./examples/roles.yaml).
 
 ### Roles Fields
@@ -194,7 +194,7 @@ spec:
   scopes: ["^library/.*$"]
 ```
 
-> **ℹ️ Note:**
+> [!NOTE]
 > [See more RoleBinding manifests examples here](./examples/rolebindings.yaml).
 
 ---
