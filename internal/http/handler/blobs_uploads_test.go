@@ -106,7 +106,7 @@ func TestBlobsUploads(t *testing.T) {
 						q := r.URL.Query()
 						q.Add("digest", "sha256:"+testBlobDigest)
 						r.URL.RawQuery = q.Encode()
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Length", fmt.Sprint(len(testBlob)))
 						r.Header.Set("Content-Range", "0-"+fmt.Sprint(len(testBlob)))
@@ -139,7 +139,7 @@ func TestBlobsUploads(t *testing.T) {
 						map[string]string{"digest": "sha256:" + testBlobDigest},
 						testBlob,
 					),
-					http.StatusUnauthorized,
+					http.StatusForbidden,
 				},
 			},
 		},
@@ -308,7 +308,7 @@ func TestBlobsUploads(t *testing.T) {
 						q := r.URL.Query()
 						q.Add("digest", "sha256:"+testBlobDigest)
 						r.URL.RawQuery = q.Encode()
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNotFound,
@@ -328,7 +328,7 @@ func TestBlobsUploads(t *testing.T) {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s?digest=%s", uuid, emptyHash)
 						r := httptest.NewRequest(http.MethodPut, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusCreated,
@@ -347,7 +347,7 @@ func TestBlobsUploads(t *testing.T) {
 						uuid := prevResp.Header.Get(testHeaderDockerUploadUUID)
 						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNoContent,
@@ -383,7 +383,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(prev *http.Response) *http.Request {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("ho"))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Range", "0-2")
 						r.Header.Set("Content-Length", "2")
@@ -395,7 +395,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(prev *http.Response) *http.Request {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("la"))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Range", "2-4")
 						r.Header.Set("Content-Length", "2")
@@ -416,7 +416,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(prev *http.Response) *http.Request {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("ho"))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Range", "1-3")
 						r.Header.Set("Content-Length", "2")
@@ -433,7 +433,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(_ *http.Response) *http.Request {
 						uuid := "8fb11ce6-e936-4cfc-aea9-f2d41c1a967c"
 						r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), strings.NewReader("hola"))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Range", "0-4")
 						r.Header.Set("Content-Length", "4")
@@ -455,7 +455,7 @@ func TestBlobsUploads(t *testing.T) {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						url := fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid)
 						r := httptest.NewRequest(http.MethodPatch, url, bytes.NewReader(testBlob))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						// Without Content-Type on proposal.
 						r.Header.Set("Content-Range", fmt.Sprintf("0-%s", fmt.Sprint(len(testBlob))))
 						return r
@@ -495,7 +495,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(prev *http.Response) *http.Request {
 						uuid := prev.Header.Get(testHeaderDockerUploadUUID)
 						r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNoContent,
@@ -509,7 +509,7 @@ func TestBlobsUploads(t *testing.T) {
 					func(prev *http.Response) *http.Request {
 						uuid := "8fb11ce6-e936-4cfc-aea9-f2d41c1a967c"
 						r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/myrepo/myimage/blobs/uploads/%s", uuid), nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNotFound,

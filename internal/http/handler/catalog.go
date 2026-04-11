@@ -22,7 +22,6 @@ import (
 	"slices"
 
 	"github.com/jlsalvador/simple-registry/pkg/http"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
 // Index just for authorization testing and ping.
@@ -39,18 +38,9 @@ func (m *ServeMux) Index(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// Check if user is allowed to access this registry.
-	if !m.cfg.Rbac.IsAllowed(username, "", "", netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "", "", netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -72,18 +62,9 @@ func (m *ServeMux) CatalogList(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// Check if user has permission to access the catalog.
-	if !m.cfg.Rbac.IsAllowed(username, "catalog", "", netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "catalog", "", netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 

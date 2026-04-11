@@ -113,8 +113,7 @@ func NewFromYamlDir(
 	ds := proxy.NewProxyDataStorage(fs, proxies)
 
 	return &Config{
-		WWWAuthenticate: `Basic realm="simple-registry"`,
-		Rbac:            rbacEngine,
-		Data:            ds,
+		Rbac: rbacEngine,
+		Data: ds,
 	}, nil
 }

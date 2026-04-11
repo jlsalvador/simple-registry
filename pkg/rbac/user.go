@@ -14,7 +14,27 @@
 
 package rbac
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"slices"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+func (e *Engine) HasUser(usr string, pwd string) bool {
+	if i := slices.IndexFunc(e.Users, func(user User) bool {
+		return user.Name == usr && user.IsPasswordValid(pwd)
+	}); i >= 0 {
+		return true
+	}
+	return false
+}
+
+// IsAnonymousUserEnabled check if anonymous user is enabled.
+func (e *Engine) IsAnonymousUserEnabled() bool {
+	return slices.IndexFunc(e.Users, func(u User) bool {
+		return u.Name == AnonymousUsername
+	}) >= 0
+}
 
 type User struct {
 	Name         string

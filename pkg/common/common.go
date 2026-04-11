@@ -38,3 +38,13 @@ func GetBool(val string) bool {
 		return val
 	}
 }
+
+func GetInt64(val string) int64 {
+	val = strings.TrimSpace(val)
+	val = strings.ToLower(val)
+	if val, err := strconv.ParseInt(val, 10, 64); err != nil {
+		return 0
+	} else {
+		return val
+	}
+}

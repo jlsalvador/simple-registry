@@ -36,7 +36,7 @@ func TestTags(t *testing.T) {
 						repo := "myrepo/myimage"
 						url := fmt.Sprintf("/v2/%s/tags/list", repo)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -51,7 +51,7 @@ func TestTags(t *testing.T) {
 						repo := "unknownrepo"
 						url := fmt.Sprintf("/v2/%s/tags/list", repo)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNotFound,

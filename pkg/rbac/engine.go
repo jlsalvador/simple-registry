@@ -17,9 +17,13 @@ package rbac
 import (
 	"regexp"
 	"slices"
+	"time"
 )
 
 type Engine struct {
+	TokenSecret  []byte
+	TokenTimeout time.Duration
+
 	Tokens       []Token
 	Users        []User
 	Roles        []Role

@@ -32,7 +32,11 @@ func TestNew(t *testing.T) {
 	}
 
 	t.Run("with valid adminPwdFile", func(t *testing.T) {
-		cfg, err := config.New("admin", "", pwdFile, tmpDir)
+		cfg, err := config.New(
+			config.WithAdminName("admin"),
+			config.WithAdminPwdFile(pwdFile),
+			config.WithDataDir(tmpDir),
+		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -42,14 +46,24 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("with missing adminPwdFile", func(t *testing.T) {
-		_, err := config.New("admin", "", filepath.Join(tmpDir, "missing.txt"), tmpDir)
-		if err == nil {
-			t.Fatal("expected error reading missing file")
-		}
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected a panic when reading missing file")
+			}
+		}()
+		config.New(
+			config.WithAdminName("admin"),
+			config.WithAdminPwdFile(filepath.Join(tmpDir, "missing.txt")),
+			config.WithDataDir(tmpDir),
+		)
 	})
 
 	t.Run("with adminPwd string", func(t *testing.T) {
-		cfg, err := config.New("admin", "secret", "", tmpDir)
+		cfg, err := config.New(
+			config.WithAdminName("admin"),
+			config.WithAdminPwd([]byte("secret")),
+			config.WithDataDir(tmpDir),
+		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -61,7 +75,11 @@ func TestNew(t *testing.T) {
 	t.Run("with invalid adminPwd length for bcrypt", func(t *testing.T) {
 		// bcrypt returns an error if the password exceeds 72 bytes.
 		longPwd := strings.Repeat("a", 73)
-		_, err := config.New("admin", longPwd, "", tmpDir)
+		_, err := config.New(
+			config.WithAdminName("admin"),
+			config.WithAdminPwd([]byte(longPwd)),
+			config.WithDataDir(tmpDir),
+		)
 		if err == nil {
 			t.Fatal("expected error due to bcrypt byte limit")
 		}
@@ -73,6 +91,10 @@ func TestNew(t *testing.T) {
 				t.Errorf("expected a panic when both passwords are empty")
 			}
 		}()
-		config.New("admin", "", "", tmpDir)
+		config.New(
+			config.WithAdminName("admin"),
+			config.WithAdminPwd([]byte("")),
+			config.WithDataDir(tmpDir),
+		)
 	})
 }

@@ -19,29 +19,45 @@ func CmdFn() error {
 		return err
 	}
 
-	var cfg *config.Config
-	if len(flags.CfgDir) > 0 {
-		cfg, err = config.NewFromYamlDir(
-			flags.CfgDir,
-			flags.DataDir,
-		)
-	} else {
-		cfg, err = config.New(
-			flags.AdminName,
-			flags.AdminPwd,
-			flags.AdminPwdFile,
-			flags.DataDir,
-		)
+	opts := []config.Option{}
+
+	if flags.DataDir != "" {
+		opts = append(opts, config.WithDataDir(flags.DataDir))
 	}
+
+	if flags.AdminName != "" {
+		opts = append(opts, config.WithAdminName(flags.AdminName))
+	}
+
+	if flags.AdminPwdFile != "" {
+		opts = append(opts, config.WithAdminPwdFile(flags.AdminPwdFile))
+	} else if flags.AdminPwd != "" {
+		opts = append(opts, config.WithAdminPwd([]byte(flags.AdminPwd)))
+	}
+
+	if flags.TokenSecretFile != "" {
+		opts = append(opts, config.WithTokenSecretFile(flags.TokenSecretFile))
+	} else if flags.TokenSecret != "" {
+		opts = append(opts, config.WithTokenSecret([]byte(flags.TokenSecret)))
+	}
+
+	if flags.TokenTimeout != 0 {
+		opts = append(opts, config.WithTokenTimeout(flags.TokenTimeout))
+	}
+
+	if len(flags.CfgDir) > 0 {
+		opts = append(opts, config.WithCfgDirs(flags.CfgDir))
+	}
+
+	cfg, err := config.New(opts...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create configuration: %w", err)
 	}
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
-	cfg.IsUIEnabled = flags.UI
 
-	h := handler.NewHandler(*cfg)
+	h := handler.NewHandler(*cfg, flags.UI)
 
 	isTLS := flags.CertFile != "" && flags.KeyFile != ""
 	scheme := "HTTP"

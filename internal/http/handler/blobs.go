@@ -21,7 +21,6 @@ import (
 	"io/fs"
 	netHttp "net/http"
 
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -46,11 +45,6 @@ func (m *ServeMux) BlobsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -66,12 +60,8 @@ func (m *ServeMux) BlobsGet(
 	}
 
 	// Check if the user have permission to pull the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -115,11 +105,6 @@ func (m *ServeMux) BlobsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -135,17 +120,12 @@ func (m *ServeMux) BlobsDelete(
 	}
 
 	// Check if the user have permission to delete blobs.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
+		ChallengeRequest(w, r)
 		return
 	}
 
-	err = m.cfg.Data.BlobsDelete(repo, digest)
-	if err != nil {
+	if err := m.cfg.Data.BlobsDelete(repo, digest); err != nil {
 		// Docker expects 404 when the blob does not exist.
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(netHttp.StatusNotFound)

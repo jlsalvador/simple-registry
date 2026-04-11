@@ -57,7 +57,11 @@ func testBuildBasicAuth(user, pwd string) string {
 func testSetupTestServeMux(t *testing.T) http.Handler {
 	t.Helper()
 
-	cfg, err := config.New(testUser, testPwd, "", t.TempDir())
+	cfg, err := config.New(
+		config.WithAdminName(testUser),
+		config.WithAdminPwd([]byte(testPwd)),
+		config.WithDataDir(t.TempDir()),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,25 +76,38 @@ func testSetupTestServeMux(t *testing.T) http.Handler {
 		Name: rbac.AnonymousUsername,
 	})
 
-	cfg.Rbac.Roles = append(cfg.Rbac.Roles, rbac.Role{
-		Name:      "everything",
-		Resources: []string{"*"},
-		Verbs: []string{
-			http.MethodHead, http.MethodGet, http.MethodPost,
-			http.MethodPut, http.MethodPatch, http.MethodDelete,
+	cfg.Rbac.Roles = append(cfg.Rbac.Roles,
+		rbac.Role{
+			Name:      "everything",
+			Resources: []string{"*"},
+			Verbs: []string{
+				http.MethodHead, http.MethodGet, http.MethodPost,
+				http.MethodPut, http.MethodPatch, http.MethodDelete,
+			},
 		},
-	})
+		rbac.Role{
+			Name:      "read_index",
+			Resources: []string{""},
+			Verbs:     []string{http.MethodHead, http.MethodGet},
+		},
+	)
 
-	cfg.Rbac.RoleBindings = append(cfg.Rbac.RoleBindings, rbac.RoleBinding{
-		Name:     "everyone_to_just_one_repo",
-		Subjects: []rbac.Subject{{Kind: "User", Name: rbac.AnonymousUsername}},
-		RoleName: "everything",
-		Scopes:   []regexp.Regexp{*regexp.MustCompile("^public/.+$")},
-	})
+	cfg.Rbac.RoleBindings = append(cfg.Rbac.RoleBindings,
+		rbac.RoleBinding{
+			Name:     "everyone_to_just_one_repo",
+			Subjects: []rbac.Subject{{Kind: "User", Name: rbac.AnonymousUsername}},
+			RoleName: "everything",
+			Scopes:   []regexp.Regexp{*regexp.MustCompile("^public/.+$")},
+		},
+		rbac.RoleBinding{
+			Name:     "anonymous_read_index",
+			Subjects: []rbac.Subject{{Kind: "User", Name: rbac.AnonymousUsername}},
+			RoleName: "read_index",
+			Scopes:   []regexp.Regexp{*regexp.MustCompile("^$")},
+		},
+	)
 
-	cfg.IsUIEnabled = true
-
-	return handler.NewHandler(*cfg)
+	return handler.NewHandler(*cfg, true)
 }
 
 type testRequestBuilder struct {

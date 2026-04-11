@@ -68,7 +68,11 @@ func setupTestEnvironment(t *testing.T) (
 
 	tmpdir := t.TempDir()
 
-	if cfg, err = config.New("test", "test", "", tmpdir); err != nil {
+	if cfg, err = config.New(
+		config.WithAdminName("test"),
+		config.WithAdminPwd([]byte("test")),
+		config.WithDataDir(tmpdir),
+	); err != nil {
 		t.Fatal(err)
 	}
 

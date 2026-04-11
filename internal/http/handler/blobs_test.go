@@ -48,7 +48,7 @@ func TestBlobs(t *testing.T) {
 			q := r.URL.Query()
 			q.Add("digest", "sha256:"+validHash)
 			r.URL.RawQuery = q.Encode()
-			r.Header.Set("Authorization", testAuthHeader)
+			r.SetBasicAuth(testUser, testPwd)
 			r.Header.Set("Content-Type", "application/octet-stream")
 			r.Header.Set("Content-Length", payloadLen)
 			r.Header.Set("Content-Range", fmt.Sprintf("0-%d", len(payload)))
@@ -70,7 +70,7 @@ func TestBlobs(t *testing.T) {
 						repo := "myrepo/myimage"
 						url := fmt.Sprintf("/v2/%s/blobs/sha256:%s", repo, validHash)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -99,7 +99,7 @@ func TestBlobs(t *testing.T) {
 						repo := "myrepo/myimage"
 						url := fmt.Sprintf("/v2/%s/blobs/sha256:%s", repo, "unknown")
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNotFound,
@@ -115,7 +115,7 @@ func TestBlobs(t *testing.T) {
 						repo := "myrepo/myimage"
 						url := fmt.Sprintf("/v2/%s/blobs/sha256:%s", repo, validHash)
 						r := httptest.NewRequest(http.MethodDelete, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusAccepted,
@@ -145,7 +145,7 @@ func TestBlobs(t *testing.T) {
 						repo := "myrepo/myimage"
 						url := fmt.Sprintf("/v2/%s/blobs/sha256:%s", repo, "unknown")
 						r := httptest.NewRequest(http.MethodDelete, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusNotFound,

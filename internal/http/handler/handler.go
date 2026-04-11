@@ -15,13 +15,13 @@
 package handler
 
 import (
-	"errors"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/jlsalvador/simple-registry/internal/config"
-	httpErrors "github.com/jlsalvador/simple-registry/pkg/http/errors"
 	"github.com/jlsalvador/simple-registry/pkg/http/log"
 	"github.com/jlsalvador/simple-registry/pkg/http/route"
 	"github.com/jlsalvador/simple-registry/pkg/mapset"
@@ -33,20 +33,37 @@ type ServeMux struct {
 	mux *http.ServeMux
 }
 
-func (m *ServeMux) authenticate(w http.ResponseWriter, r *http.Request) (username string, err error) {
-	username, err = m.cfg.Rbac.GetUsernameFromHttpRequest(r)
-	if err != nil {
-		if errors.Is(err, httpErrors.ErrUnauthorized) {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
+func ChallengeRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	if r.Header.Get("Authorization") == "" {
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		} else if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
+			// Soporte para proxies inversos (Nginx, Traefik, etc.)
+			scheme = forwardedProto
 		}
-		w.WriteHeader(httpErrors.StatusCodeFromError(err))
-		return "", err
+
+		challenge := fmt.Sprintf(
+			`Bearer realm="%s://%s/token"`,
+			scheme,
+			r.Host,
+		)
+		w.Header().Set("WWW-Authenticate", challenge)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
-	return username, nil
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	json.NewEncoder(w).Encode(ErrorDenied)
 }
 
 // registerRoutes registers the routes for the HTTP server.
-func (m *ServeMux) registerRoutes() {
+func (m *ServeMux) registerRoutes(enableUI bool) {
 	exprName := strings.TrimPrefix(strings.TrimSuffix(registry.ExprName, "$"), "^")
 	exprDigest := strings.TrimPrefix(strings.TrimSuffix(registry.ExprDigest, "$"), "^")
 	exprTag := strings.TrimPrefix(strings.TrimSuffix(registry.ExprTag, "$"), "^")
@@ -137,9 +154,15 @@ func (m *ServeMux) registerRoutes() {
 			"^/v2/(?P<name>"+exprName+")/manifests/(?P<reference>(?:"+exprTag+")|(?:"+exprDigest+"))/?$",
 			m.ManifestsDelete,
 		),
+
+		route.NewRoute(
+			http.MethodGet,
+			"^/token/?$",
+			m.Token,
+		),
 	}
 
-	if m.cfg.IsUIEnabled {
+	if enableUI {
 		routes = append(routes, route.NewRoute(
 			http.MethodGet,
 			"^/ui(?:/.*)?$",
@@ -194,12 +217,12 @@ func (m *ServeMux) registerRoutes() {
 // [Docker Registry API v2.0 specification].
 //
 // [Docker Registry API v2.0 specification]: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md
-func NewHandler(cfg config.Config) http.Handler {
+func NewHandler(cfg config.Config, enableUI bool) http.Handler {
 	mux := &ServeMux{
 		cfg: cfg,
 		mux: http.NewServeMux(),
 	}
-	mux.registerRoutes()
+	mux.registerRoutes(enableUI)
 
 	return log.LoggingMiddleware(mux.mux)
 }

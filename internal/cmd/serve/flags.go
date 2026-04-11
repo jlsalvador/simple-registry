@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jlsalvador/simple-registry/internal/cmd"
 	cliFlag "github.com/jlsalvador/simple-registry/pkg/cli/flag"
@@ -23,6 +24,10 @@ type Flags struct {
 	CertFile string
 	KeyFile  string
 
+	TokenSecret     string
+	TokenSecretFile string
+	TokenTimeout    time.Duration
+
 	UI bool
 }
 
@@ -39,6 +44,10 @@ func parseFlags() (flags Flags, err error) {
 
 	flagSet.StringVar(&flags.CertFile, "certfile", common.GetEnv(cmd.ENV_PREFIX+"CERTFILE", ""), "TLS certificate file\nEnables HTTPS")
 	flagSet.StringVar(&flags.KeyFile, "keyfile", common.GetEnv(cmd.ENV_PREFIX+"KEYFILE", ""), "TLS key file")
+
+	flagSet.StringVar(&flags.TokenSecret, "tokensecret", common.GetEnv(cmd.ENV_PREFIX+"TOKENSECRET", ""), "Token secret\nLeaked by procfs! use tokensecretfile instead\nIgnored if -tokensecretfile is set\nIgnored if -cfgdir is set")
+	flagSet.StringVar(&flags.TokenSecretFile, "tokensecretfile", common.GetEnv(cmd.ENV_PREFIX+"TOKENSECRETFILE", ""), "Fetch token secret from file\nIgnored if -cfgdir is set")
+	flagSet.DurationVar(&flags.TokenTimeout, "toketimeout", time.Duration(common.GetInt64(common.GetEnv(cmd.ENV_PREFIX+"TOKENTIMEOUT", "30")))*time.Second, "")
 
 	flagSet.BoolVar(&flags.UI, "ui", common.GetBool(common.GetEnv(cmd.ENV_PREFIX+"UI", "false")), "Enable web UI")
 

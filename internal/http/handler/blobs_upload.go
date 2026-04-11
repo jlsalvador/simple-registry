@@ -24,7 +24,6 @@ import (
 	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/pkg/http"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -168,12 +167,6 @@ func (m *ServeMux) BlobsUploadsPost(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		LogError(err)
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -184,14 +177,8 @@ func (m *ServeMux) BlobsUploadsPost(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -213,7 +200,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	// Check if the user can pull the other repository.
 	// `from` could be empty if automatic content discovery is enabled.
 	if mount != "" {
-		if !m.cfg.Rbac.IsAllowed(username, "blobs", from, netHttp.MethodGet) {
+		if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", from, netHttp.MethodGet) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			json.NewEncoder(w).Encode(ErrorUnauthorized)
@@ -255,12 +242,6 @@ func (m *ServeMux) BlobsUploadsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		LogError(err)
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -280,14 +261,8 @@ func (m *ServeMux) BlobsUploadsGet(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPost) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -331,12 +306,6 @@ func (m *ServeMux) BlobsUploadsPatch(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		LogError(err)
-		return
-	}
-
 	// Validate request Content-Type header.
 	if r.Header.Get("Content-Type") != "application/octet-stream" {
 		w.Header().Set("Content-Type", "application/json")
@@ -364,14 +333,8 @@ func (m *ServeMux) BlobsUploadsPatch(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPatch) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPatch) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -452,12 +415,6 @@ func (m *ServeMux) BlobsUploadsPut(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		LogError(err)
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -486,14 +443,8 @@ func (m *ServeMux) BlobsUploadsPut(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodPut) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPut) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -573,12 +524,6 @@ func (m *ServeMux) BlobsUploadsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		LogError(err)
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -598,14 +543,8 @@ func (m *ServeMux) BlobsUploadsDelete(
 	}
 
 	// Check if the user can delete blobs from the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "blobs", repo, netHttp.MethodDelete) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		json.NewEncoder(w).Encode(ErrorUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
+		ChallengeRequest(w, r)
 		return
 	}
 

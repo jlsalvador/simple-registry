@@ -24,7 +24,6 @@ import (
 	netHttp "net/http"
 
 	"github.com/jlsalvador/simple-registry/internal/data"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -54,6 +53,7 @@ func getContentType(manifest []byte) string {
 //
 // # HTTP status codes:
 //   - 200 OK
+//   - 403 Forbidden
 //   - 404 Not Found
 //   - 401 Unauthorized
 //   - 500 Internal Server Error
@@ -61,11 +61,6 @@ func (m *ServeMux) ManifestsGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -86,12 +81,8 @@ func (m *ServeMux) ManifestsGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -145,11 +136,6 @@ func (m *ServeMux) ManifestsPut(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -171,12 +157,8 @@ func (m *ServeMux) ManifestsPut(
 	}
 
 	// Check if the user can to push manifests to the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodPut) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodPut) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -243,11 +225,6 @@ func (m *ServeMux) ManifestsDelete(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -268,12 +245,8 @@ func (m *ServeMux) ManifestsDelete(
 	}
 
 	// Check if the user can delete manifests from the repository.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", rbacRepo, netHttp.MethodDelete) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodDelete) {
+		ChallengeRequest(w, r)
 		return
 	}
 

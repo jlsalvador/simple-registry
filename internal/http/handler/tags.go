@@ -22,7 +22,6 @@ import (
 	"slices"
 
 	"github.com/jlsalvador/simple-registry/pkg/http"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -48,11 +47,6 @@ func (m *ServeMux) TagsList(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -61,12 +55,8 @@ func (m *ServeMux) TagsList(
 	}
 
 	// Check if the user can list tags from this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "tags", repo, netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "tags", repo, netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 
@@ -85,7 +75,7 @@ func (m *ServeMux) TagsList(
 	// Filter tags by user permissions.
 	tags = slices.DeleteFunc(tags, func(t string) bool {
 		resource := repo + ":" + t
-		return !m.cfg.Rbac.IsAllowed(username, "tags", resource, netHttp.MethodGet)
+		return !m.cfg.Rbac.IsRequestAllowed(r, "tags", resource, netHttp.MethodGet)
 	})
 
 	slices.Sort(tags)

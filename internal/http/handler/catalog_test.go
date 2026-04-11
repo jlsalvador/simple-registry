@@ -33,7 +33,7 @@ func TestCatalog(t *testing.T) {
 				{
 					func(_ *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodGet, "/v2/", nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -58,7 +58,7 @@ func TestCatalog(t *testing.T) {
 				{
 					func(_ *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodGet, "/v2/_catalog", nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -71,7 +71,7 @@ func TestCatalog(t *testing.T) {
 				{
 					func(prevResp *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodPost, "/v2/myrepo/myimage/blobs/uploads/", bytes.NewReader([]byte("hola")))
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						r.Header.Set("Content-Type", "application/octet-stream")
 						r.Header.Set("Content-Length", "4")
 						r.Header.Set("Content-Range", "0-4")
@@ -83,7 +83,7 @@ func TestCatalog(t *testing.T) {
 				{
 					func(_ *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodGet, "/v2/_catalog", nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,

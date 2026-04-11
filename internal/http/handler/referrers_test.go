@@ -52,7 +52,7 @@ func TestReferrers(t *testing.T) {
 			manifestJSON, _ := json.Marshal(referrerManifest)
 			url := fmt.Sprintf("/v2/myrepo/myimage/manifests/%s", tag)
 			r := httptest.NewRequest(http.MethodPut, url, bytes.NewReader(manifestJSON))
-			r.Header.Set("Authorization", testAuthHeader)
+			r.SetBasicAuth(testUser, testPwd)
 			r.Header.Set("Content-Type", string(registry.MediaTypeOCIImageManifest))
 			return r
 		}
@@ -74,7 +74,7 @@ func TestReferrers(t *testing.T) {
 					func(_ *http.Response) *http.Request {
 						url := fmt.Sprintf("/v2/myrepo/myimage/referrers/sha256:%s", testManifestDigest)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -96,7 +96,7 @@ func TestReferrers(t *testing.T) {
 					func(_ *http.Response) *http.Request {
 						url := fmt.Sprintf("/v2/myrepo/myimage/referrers/sha256:%s", testManifestDigest)
 						r := httptest.NewRequest(http.MethodGet, url, nil)
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
@@ -118,7 +118,7 @@ func TestReferrers(t *testing.T) {
 						q := r.URL.Query()
 						q.Add("artifactType", "application/vnd.example.signature")
 						r.URL.RawQuery = q.Encode()
-						r.Header.Set("Authorization", testAuthHeader)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,

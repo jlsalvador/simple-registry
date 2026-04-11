@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	netHttp "net/http"
 
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/registry"
 )
 
@@ -51,11 +50,6 @@ func (m *ServeMux) ReferrersGet(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	username, err := m.authenticate(w, r)
-	if err != nil {
-		return
-	}
-
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -71,12 +65,8 @@ func (m *ServeMux) ReferrersGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsAllowed(username, "manifests", repo, netHttp.MethodGet) {
-		if username == rbac.AnonymousUsername {
-			w.Header().Set("WWW-Authenticate", m.cfg.WWWAuthenticate)
-		}
-
-		w.WriteHeader(netHttp.StatusUnauthorized)
+	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", repo, netHttp.MethodGet) {
+		ChallengeRequest(w, r)
 		return
 	}
 

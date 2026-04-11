@@ -17,19 +17,25 @@ func CmdFn() error {
 		return err
 	}
 
-	var cfg *config.Config
+	opts := []config.Option{
+		config.WithAdminPwd([]byte("-")),
+	}
+
+	if flags.DataDir != "" {
+		opts = append(opts, config.WithDataDir(flags.DataDir))
+	}
+
 	if len(flags.CfgDir) > 0 {
-		cfg, err = config.NewFromYamlDir(
-			flags.CfgDir,
-			flags.DataDir,
-		)
-	} else {
-		cfg, err = config.New(
-			"",
-			"-",
-			"",
-			flags.DataDir,
-		)
+		opts = append(opts, config.WithCfgDirs(flags.CfgDir))
+	}
+
+	var cfg *config.Config
+	cfg, err = config.New(opts...)
+	if err != nil {
+		return err
+	}
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
 	}
 
 	deletedBlobs, deletedManifests, seenBlobs, seenManifests, err := GarbageCollect(
