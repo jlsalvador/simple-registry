@@ -27,6 +27,7 @@ import (
 	"github.com/jlsalvador/simple-registry/internal/version"
 	"github.com/jlsalvador/simple-registry/pkg/log"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -20,6 +20,7 @@ import (
 	"os"
 
 	cliTerm "github.com/jlsalvador/simple-registry/pkg/cli/term"
+
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/term"
 )
