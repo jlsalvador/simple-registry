@@ -61,6 +61,7 @@ func testSetupTestServeMux(t *testing.T) http.Handler {
 		config.WithAdminName(testUser),
 		config.WithAdminPwd([]byte(testPwd)),
 		config.WithDataDir(t.TempDir()),
+		config.WithHttpUI(true),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +108,7 @@ func testSetupTestServeMux(t *testing.T) http.Handler {
 		},
 	)
 
-	return handler.NewHandler(*cfg, true)
+	return handler.NewHandler(*cfg)
 }
 
 type testRequestBuilder struct {

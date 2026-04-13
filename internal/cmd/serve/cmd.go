@@ -19,6 +19,29 @@ func CmdFn() error {
 		return err
 	}
 
+	cfg, err := buildConfig(&flags)
+	if err != nil {
+		return err
+	}
+
+	return runServer(cfg)
+}
+
+func buildConfig(flags *Flags) (*config.Config, error) {
+	opts := buildOptions(flags)
+
+	cfg, err := config.New(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create configuration: %w", err)
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	return cfg, nil
+}
+
+func buildOptions(flags *Flags) []config.Option {
 	opts := []config.Option{}
 
 	if flags.DataDir != "" {
@@ -49,17 +72,30 @@ func CmdFn() error {
 		opts = append(opts, config.WithCfgDirs(flags.CfgDir))
 	}
 
-	cfg, err := config.New(opts...)
-	if err != nil {
-		return fmt.Errorf("failed to create configuration: %w", err)
-	}
-	if cfg == nil {
-		return fmt.Errorf("config is nil")
+	if flags.Addr != "" {
+		opts = append(opts, config.WithHttpAddr(flags.Addr))
 	}
 
-	h := handler.NewHandler(*cfg, flags.UI)
+	if flags.UI {
+		opts = append(opts, config.WithHttpUI(flags.UI))
+	}
 
-	isTLS := flags.CertFile != "" && flags.KeyFile != ""
+	if flags.CertFile != "" {
+		opts = append(opts, config.WithHttpCertFile(flags.CertFile))
+	}
+
+	if flags.KeyFile != "" {
+		opts = append(opts, config.WithHttpKeyFile(flags.KeyFile))
+	}
+
+	return opts
+}
+
+func runServer(cfg *config.Config) error {
+	h := handler.NewHandler(*cfg)
+
+	isTLS := cfg.Http.CertFile != "" && cfg.Http.KeyFile != ""
+
 	scheme := "HTTP"
 	if isTLS {
 		scheme = "HTTPS"
@@ -69,13 +105,19 @@ func CmdFn() error {
 		"service.name", version.AppName,
 		"service.version", version.AppVersion,
 		"event.dataset", "cmd.serve",
-		"addr", flags.Addr,
+		"addr", cfg.Http.Addr,
 		"scheme", scheme,
 		"message", "listening for requests",
 	).Print()
 
 	if isTLS {
-		return http.ListenAndServeTLS(flags.Addr, flags.CertFile, flags.KeyFile, h)
+		return http.ListenAndServeTLS(
+			cfg.Http.Addr,
+			cfg.Http.CertFile,
+			cfg.Http.KeyFile,
+			h,
+		)
 	}
-	return http.ListenAndServe(flags.Addr, h)
+
+	return http.ListenAndServe(cfg.Http.Addr, h)
 }

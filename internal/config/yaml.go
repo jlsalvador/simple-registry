@@ -20,11 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
-	"github.com/jlsalvador/simple-registry/internal/data/proxy"
 	"github.com/jlsalvador/simple-registry/internal/version"
 	"github.com/jlsalvador/simple-registry/pkg/log"
-	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
@@ -77,43 +74,4 @@ func parseYamlDir(dirName string) (manifests []any, err error) {
 	}
 
 	return manifests, nil
-}
-
-func NewFromYamlDir(
-	dirsName []string,
-	dataDir string,
-) (*Config, error) {
-	manifests := []any{}
-	for _, dirName := range dirsName {
-		ms, err := parseYamlDir(dirName)
-		if err != nil {
-			return nil, err
-		}
-		manifests = append(manifests, ms...)
-	}
-
-	tokens, users, roles, roleBindings, err := GetTokensUsersRolesRoleBindingsFromManifests(manifests)
-	if err != nil {
-		return nil, err
-	}
-
-	rbacEngine := rbac.Engine{
-		Tokens:       tokens,
-		Users:        users,
-		Roles:        roles,
-		RoleBindings: roleBindings,
-	}
-
-	proxies, err := GetProxiesFromManifests(manifests)
-	if err != nil {
-		return nil, err
-	}
-
-	fs := filesystem.NewFilesystemDataStorage(dataDir)
-	ds := proxy.NewProxyDataStorage(fs, proxies)
-
-	return &Config{
-		Rbac: rbacEngine,
-		Data: ds,
-	}, nil
 }

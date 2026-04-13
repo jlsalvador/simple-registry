@@ -63,7 +63,7 @@ func ChallengeRequest(
 }
 
 // registerRoutes registers the routes for the HTTP server.
-func (m *ServeMux) registerRoutes(enableUI bool) {
+func (m *ServeMux) registerRoutes() {
 	exprName := strings.TrimPrefix(strings.TrimSuffix(registry.ExprName, "$"), "^")
 	exprDigest := strings.TrimPrefix(strings.TrimSuffix(registry.ExprDigest, "$"), "^")
 	exprTag := strings.TrimPrefix(strings.TrimSuffix(registry.ExprTag, "$"), "^")
@@ -162,7 +162,7 @@ func (m *ServeMux) registerRoutes(enableUI bool) {
 		),
 	}
 
-	if enableUI {
+	if m.cfg.Http.UI {
 		routes = append(routes, route.NewRoute(
 			http.MethodGet,
 			"^/ui(?:/.*)?$",
@@ -217,12 +217,12 @@ func (m *ServeMux) registerRoutes(enableUI bool) {
 // [Docker Registry API v2.0 specification].
 //
 // [Docker Registry API v2.0 specification]: https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md
-func NewHandler(cfg config.Config, enableUI bool) http.Handler {
+func NewHandler(cfg config.Config) http.Handler {
 	mux := &ServeMux{
 		cfg: cfg,
 		mux: http.NewServeMux(),
 	}
-	mux.registerRoutes(enableUI)
+	mux.registerRoutes()
 
 	return log.LoggingMiddleware(mux.mux)
 }

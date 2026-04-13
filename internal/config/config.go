@@ -24,6 +24,7 @@ import (
 
 	"github.com/jlsalvador/simple-registry/internal/data"
 	"github.com/jlsalvador/simple-registry/internal/data/filesystem"
+	"github.com/jlsalvador/simple-registry/internal/data/proxy"
 	"github.com/jlsalvador/simple-registry/internal/version"
 	"github.com/jlsalvador/simple-registry/pkg/log"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
@@ -31,7 +32,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type Http struct {
+	Addr     string
+	UI       bool
+	CertFile string
+	KeyFile  string
+}
+
 type Config struct {
+	Http Http
 	Rbac rbac.Engine
 	Data data.DataStorage
 }
@@ -41,6 +50,10 @@ type options struct {
 	adminPwd     []byte
 	tokenSecret  []byte
 	tokenTimeout time.Duration
+	addr         string
+	ui           bool
+	certfile     string
+	keyfile      string
 
 	rbacEngine *rbac.Engine
 	data       data.DataStorage
@@ -98,10 +111,81 @@ func WithDataDir(dir string) Option {
 	}
 }
 
-func WithCfgDirs(dir []string) Option {
-	//FIXME
+func WithHttpAddr(addr string) Option {
 	return func(o *options) {
-		panic("unimplemented")
+		o.addr = addr
+	}
+}
+
+func WithHttpUI(enable bool) Option {
+	return func(o *options) {
+		o.ui = true
+	}
+}
+
+func WithHttpCertFile(certFile string) Option {
+	return func(o *options) {
+		o.certfile = certFile
+	}
+}
+
+func WithHttpKeyFile(keyFile string) Option {
+	return func(o *options) {
+		o.keyfile = keyFile
+	}
+}
+
+func WithCfgDirs(dirs []string) Option {
+	return func(o *options) {
+		manifests := []any{}
+		for _, dir := range dirs {
+			ms, err := parseYamlDir(dir)
+			if err != nil {
+				panic(err)
+			}
+			manifests = append(manifests, ms...)
+		}
+
+		tokens, users, roles, roleBindings, err := GetTokensUsersRolesRoleBindingsFromManifests(manifests)
+		if err != nil {
+			panic(err)
+		}
+
+		o.rbacEngine = &rbac.Engine{
+			Tokens:       tokens,
+			Users:        users,
+			Roles:        roles,
+			RoleBindings: roleBindings,
+		}
+
+		proxies, err := GetProxiesFromManifests(manifests)
+		if err != nil {
+			panic(err)
+		}
+
+		o.tokenSecret, o.tokenTimeout = GetTokenSecretTimeoutFromManifests(manifests)
+
+		dataDir := GetDataDirFromManifests(manifests)
+		if dataDir == "" {
+			panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
+		}
+
+		fs := filesystem.NewFilesystemDataStorage(dataDir)
+		o.data = proxy.NewProxyDataStorage(fs, proxies)
+
+		http := GetHttpFromManifests(manifests)
+		if http.Addr != "" {
+			o.addr = http.Addr
+		}
+		if http.UI {
+			o.ui = http.UI
+		}
+		if http.CertFile != "" {
+			o.certfile = http.CertFile
+		}
+		if http.KeyFile != "" {
+			o.keyfile = http.KeyFile
+		}
 	}
 }
 
@@ -111,19 +195,19 @@ func New(opts ...Option) (*Config, error) {
 		opt(&o)
 	}
 
-	if string(o.adminPwd) == "" {
-		panic("adminpwd is empty, please use flag -adminpwd")
-	}
+	// Data
 	if o.data == nil {
 		panic("datadir is empty, please use flag -datadir")
 	}
+
+	// Token
 	if string(o.tokenSecret) == "" {
 		o.tokenSecret = []byte(rand.Text())
 
 		log.Info(
 			"service.name", version.AppName,
 			"service.version", version.AppVersion,
-			"event.dataset", "cmd.serve",
+			"event.dataset", "internal.config",
 			"message", fmt.Sprintf("generated token secret: %s", o.tokenSecret),
 		).Print()
 	}
@@ -131,7 +215,11 @@ func New(opts ...Option) (*Config, error) {
 		o.tokenTimeout = time.Second * 30
 	}
 
+	// RBAC
 	if o.rbacEngine == nil {
+		if string(o.adminPwd) == "" {
+			panic("adminpwd is empty, please use flag -adminpwd")
+		}
 		adminPwdHash, err := bcrypt.GenerateFromPassword(
 			o.adminPwd,
 			bcrypt.DefaultCost,
@@ -141,9 +229,6 @@ func New(opts ...Option) (*Config, error) {
 		}
 
 		o.rbacEngine = &rbac.Engine{
-			TokenSecret:  o.tokenSecret,
-			TokenTimeout: o.tokenTimeout,
-
 			Users: []rbac.User{
 				{
 					// Administrator.
@@ -207,8 +292,31 @@ func New(opts ...Option) (*Config, error) {
 			},
 		}
 	}
+	o.rbacEngine.TokenSecret = o.tokenSecret
+	o.rbacEngine.TokenTimeout = o.tokenTimeout
+
+	// Http
+	http := Http{
+		Addr:     "0.0.0.0:5000",
+		UI:       false,
+		CertFile: "",
+		KeyFile:  "",
+	}
+	if o.addr != "" {
+		http.Addr = o.addr
+	}
+	if o.ui {
+		http.UI = o.ui
+	}
+	if o.certfile != "" {
+		http.CertFile = o.certfile
+	}
+	if o.keyfile != "" {
+		http.KeyFile = o.keyfile
+	}
 
 	return &Config{
+		Http: http,
 		Rbac: *o.rbacEngine,
 		Data: o.data,
 	}, nil

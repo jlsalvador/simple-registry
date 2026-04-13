@@ -100,12 +100,34 @@ type PullThroughCacheManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
+type ConfigurationManifest struct {
+	yamlscheme.CommonManifest
+
+	Metadata struct {
+		Name string `json:"name" yaml:"name"`
+	} `json:"metadata" yaml:"metadata"`
+	Spec struct {
+		TokenSecret  string `json:"tokenSecret" yaml:"tokenSecret"`
+		TokenTimeout int    `json:"tokenTimeout" yaml:"tokenTimeout"`
+
+		DataDir string `json:"dataDir" yaml:"dataDir"`
+
+		Http struct {
+			Addr     string `json:"addr" yaml:"addr"`
+			UI       bool   `json:"ui" yaml:"ui"`
+			CertFile string `json:"certfile" yaml:"certfile"`
+			KeyFile  string `json:"keyfile" yaml:"keyfile"`
+		} `json:"http" yaml:"http"`
+	} `json:"spec" yaml:"spec"`
+}
+
 func init() {
 	yamlscheme.Register[TokenManifest](ApiVersion, "Token")
 	yamlscheme.Register[UserManifest](ApiVersion, "User")
 	yamlscheme.Register[RoleManifest](ApiVersion, "Role")
 	yamlscheme.Register[RoleBindingManifest](ApiVersion, "RoleBinding")
 	yamlscheme.Register[PullThroughCacheManifest](ApiVersion, "PullThroughCache")
+	yamlscheme.Register[ConfigurationManifest](ApiVersion, "Configuration")
 }
 
 func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
@@ -194,6 +216,58 @@ func GetProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error)
 				Password: m.Spec.Upstream.Password,
 				Scopes:   m.Spec.Scopes,
 			})
+		}
+	}
+
+	return
+}
+
+func GetTokenSecretTimeoutFromManifests(manifests []any) (
+	tokenSecret []byte,
+	tokenTimeout time.Duration,
+) {
+	for _, manifest := range manifests {
+		if m, ok := manifest.(*ConfigurationManifest); ok {
+			if m.Spec.TokenSecret != "" {
+				tokenSecret = []byte(m.Spec.TokenSecret)
+			}
+
+			if m.Spec.TokenTimeout != 0 {
+				tokenTimeout = time.Duration(m.Spec.TokenTimeout) * time.Second
+			}
+		}
+	}
+
+	return
+}
+
+func GetDataDirFromManifests(manifests []any) (dataDir string) {
+	for _, manifest := range manifests {
+		if m, ok := manifest.(*ConfigurationManifest); ok {
+			if m.Spec.DataDir != "" {
+				dataDir = m.Spec.DataDir
+			}
+		}
+	}
+
+	return
+}
+
+func GetHttpFromManifests(manifests []any) (http Http) {
+	for _, manifest := range manifests {
+		if m, ok := manifest.(*ConfigurationManifest); ok {
+			if m.Spec.Http.Addr != "" {
+				http.Addr = m.Spec.Http.Addr
+			}
+			if m.Spec.Http.UI {
+				http.UI = m.Spec.Http.UI
+			}
+			if m.Spec.Http.CertFile != "" {
+				http.CertFile = m.Spec.Http.CertFile
+			}
+			if m.Spec.Http.KeyFile != "" {
+				http.KeyFile = m.Spec.Http.KeyFile
+			}
 		}
 	}
 
