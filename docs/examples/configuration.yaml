@@ -6,11 +6,13 @@ metadata:
 spec:
   dataDir: ./private/data
 
-  tokenSecret: super-token-secret
-  tokenTimeout: 30
-
   http:
     addr: 0.0.0.0:5000
+
+    tokenSecret: super-token-secret
+    tokenTimeout: 30
+
     ui: true
+
     certfile: ""
     keyfile: ""

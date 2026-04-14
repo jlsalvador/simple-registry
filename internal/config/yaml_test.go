@@ -32,6 +32,11 @@ metadata:
   name: test
 spec:
   dataDir: ` + tmpDir + `
+  http:
+    addr: 127.0.0.1:5000
+    tokenSecret: super-token-secret
+    tokenTimeout: 30
+    ui: true
 `
 
 	// Valid YAML file.

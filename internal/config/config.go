@@ -33,10 +33,12 @@ import (
 )
 
 type Http struct {
-	Addr     string
-	UI       bool
-	CertFile string
-	KeyFile  string
+	Addr         string
+	TokenSecret  []byte
+	TokenTimeout time.Duration
+	UI           bool
+	CertFile     string
+	KeyFile      string
 }
 
 type Config struct {
@@ -83,13 +85,13 @@ func WithAdminPwdFile(file string) Option {
 	}
 }
 
-func WithTokenSecret(secret []byte) Option {
+func WithHttpTokenSecret(secret []byte) Option {
 	return func(o *options) {
 		o.tokenSecret = secret
 	}
 }
 
-func WithTokenSecretFile(file string) Option {
+func WithHttpTokenSecretFile(file string) Option {
 	return func(o *options) {
 		b, err := os.ReadFile(file)
 		if err != nil {
@@ -99,7 +101,7 @@ func WithTokenSecretFile(file string) Option {
 	}
 }
 
-func WithTokenTimeout(timeout time.Duration) Option {
+func WithHttpTokenTimeout(timeout time.Duration) Option {
 	return func(o *options) {
 		o.tokenTimeout = timeout
 	}
@@ -163,8 +165,6 @@ func WithCfgDirs(dirs []string) Option {
 			panic(err)
 		}
 
-		o.tokenSecret, o.tokenTimeout = GetTokenSecretTimeoutFromManifests(manifests)
-
 		dataDir := GetDataDirFromManifests(manifests)
 		if dataDir == "" {
 			panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
@@ -175,16 +175,22 @@ func WithCfgDirs(dirs []string) Option {
 
 		http := GetHttpFromManifests(manifests)
 		if http.Addr != "" {
-			o.addr = http.Addr
+			WithHttpAddr(http.Addr)(o)
+		}
+		if len(http.TokenSecret) > 0 {
+			WithHttpTokenSecret(http.TokenSecret)(o)
+		}
+		if http.TokenTimeout > 0 {
+			WithHttpTokenTimeout(http.TokenTimeout)(o)
 		}
 		if http.UI {
-			o.ui = http.UI
+			WithHttpUI(http.UI)(o)
 		}
 		if http.CertFile != "" {
-			o.certfile = http.CertFile
+			WithHttpCertFile(http.CertFile)(o)
 		}
 		if http.KeyFile != "" {
-			o.keyfile = http.KeyFile
+			WithHttpKeyFile(http.KeyFile)(o)
 		}
 	}
 }
@@ -198,21 +204,6 @@ func New(opts ...Option) (*Config, error) {
 	// Data
 	if o.data == nil {
 		panic("datadir is empty, please use flag -datadir")
-	}
-
-	// Token
-	if string(o.tokenSecret) == "" {
-		o.tokenSecret = []byte(rand.Text())
-
-		log.Info(
-			"service.name", version.AppName,
-			"service.version", version.AppVersion,
-			"event.dataset", "internal.config",
-			"message", fmt.Sprintf("generated token secret: %s", o.tokenSecret),
-		).Print()
-	}
-	if o.tokenTimeout == 0 {
-		o.tokenTimeout = time.Second * 30
 	}
 
 	// RBAC
@@ -292,27 +283,31 @@ func New(opts ...Option) (*Config, error) {
 			},
 		}
 	}
-	o.rbacEngine.TokenSecret = o.tokenSecret
-	o.rbacEngine.TokenTimeout = o.tokenTimeout
 
 	// Http
+	if o.addr == "" {
+		o.addr = "0.0.0.0:5000"
+	}
+	if len(o.tokenSecret) == 0 {
+		o.tokenSecret = []byte(rand.Text())
+
+		log.Info(
+			"service.name", version.AppName,
+			"service.version", version.AppVersion,
+			"event.dataset", "internal.config",
+			"message", fmt.Sprintf("generated token secret: %s", o.tokenSecret),
+		).Print()
+	}
+	if o.tokenTimeout == 0 {
+		o.tokenTimeout = time.Second * 30
+	}
 	http := Http{
-		Addr:     "0.0.0.0:5000",
-		UI:       false,
-		CertFile: "",
-		KeyFile:  "",
-	}
-	if o.addr != "" {
-		http.Addr = o.addr
-	}
-	if o.ui {
-		http.UI = o.ui
-	}
-	if o.certfile != "" {
-		http.CertFile = o.certfile
-	}
-	if o.keyfile != "" {
-		http.KeyFile = o.keyfile
+		Addr:         "0.0.0.0:5000",
+		TokenSecret:  o.tokenSecret,
+		TokenTimeout: o.tokenTimeout,
+		UI:           o.ui,
+		CertFile:     o.certfile,
+		KeyFile:      o.keyfile,
 	}
 
 	return &Config{

@@ -107,16 +107,15 @@ type ConfigurationManifest struct {
 		Name string `json:"name" yaml:"name"`
 	} `json:"metadata" yaml:"metadata"`
 	Spec struct {
-		TokenSecret  string `json:"tokenSecret" yaml:"tokenSecret"`
-		TokenTimeout int    `json:"tokenTimeout" yaml:"tokenTimeout"`
-
 		DataDir string `json:"dataDir" yaml:"dataDir"`
 
 		Http struct {
-			Addr     string `json:"addr" yaml:"addr"`
-			UI       bool   `json:"ui" yaml:"ui"`
-			CertFile string `json:"certfile" yaml:"certfile"`
-			KeyFile  string `json:"keyfile" yaml:"keyfile"`
+			Addr         string `json:"addr" yaml:"addr"`
+			TokenSecret  string `json:"tokenSecret" yaml:"tokenSecret"`
+			TokenTimeout int    `json:"tokenTimeout" yaml:"tokenTimeout"`
+			UI           bool   `json:"ui" yaml:"ui"`
+			CertFile     string `json:"certfile" yaml:"certfile"`
+			KeyFile      string `json:"keyfile" yaml:"keyfile"`
 		} `json:"http" yaml:"http"`
 	} `json:"spec" yaml:"spec"`
 }
@@ -222,25 +221,6 @@ func GetProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error)
 	return
 }
 
-func GetTokenSecretTimeoutFromManifests(manifests []any) (
-	tokenSecret []byte,
-	tokenTimeout time.Duration,
-) {
-	for _, manifest := range manifests {
-		if m, ok := manifest.(*ConfigurationManifest); ok {
-			if m.Spec.TokenSecret != "" {
-				tokenSecret = []byte(m.Spec.TokenSecret)
-			}
-
-			if m.Spec.TokenTimeout != 0 {
-				tokenTimeout = time.Duration(m.Spec.TokenTimeout) * time.Second
-			}
-		}
-	}
-
-	return
-}
-
 func GetDataDirFromManifests(manifests []any) (dataDir string) {
 	for _, manifest := range manifests {
 		if m, ok := manifest.(*ConfigurationManifest); ok {
@@ -258,6 +238,12 @@ func GetHttpFromManifests(manifests []any) (http Http) {
 		if m, ok := manifest.(*ConfigurationManifest); ok {
 			if m.Spec.Http.Addr != "" {
 				http.Addr = m.Spec.Http.Addr
+			}
+			if m.Spec.Http.TokenSecret != "" {
+				http.TokenSecret = []byte(m.Spec.Http.TokenSecret)
+			}
+			if m.Spec.Http.TokenTimeout != 0 {
+				http.TokenTimeout = time.Duration(m.Spec.Http.TokenTimeout) * time.Second
 			}
 			if m.Spec.Http.UI {
 				http.UI = m.Spec.Http.UI

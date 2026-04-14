@@ -59,13 +59,13 @@ func buildOptions(flags *Flags) []config.Option {
 	}
 
 	if flags.TokenSecretFile != "" {
-		opts = append(opts, config.WithTokenSecretFile(flags.TokenSecretFile))
+		opts = append(opts, config.WithHttpTokenSecretFile(flags.TokenSecretFile))
 	} else if flags.TokenSecret != "" {
-		opts = append(opts, config.WithTokenSecret([]byte(flags.TokenSecret)))
+		opts = append(opts, config.WithHttpTokenSecret([]byte(flags.TokenSecret)))
 	}
 
 	if flags.TokenTimeout != 0 {
-		opts = append(opts, config.WithTokenTimeout(flags.TokenTimeout))
+		opts = append(opts, config.WithHttpTokenTimeout(flags.TokenTimeout))
 	}
 
 	if len(flags.CfgDir) > 0 {
