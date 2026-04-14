@@ -76,3 +76,30 @@ func TestGetBool(t *testing.T) {
 		})
 	}
 }
+func TestGetInt64(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		val  string
+		want int64
+	}{
+		{"positive number", "42", 42},
+		{"negative number", "-42", -42},
+		{"zero", "0", 0},
+		{"large number", "9223372036854775807", 9223372036854775807},
+		{"small number", "-9223372036854775808", -9223372036854775808},
+		{"with leading space", " 42", 42},
+		{"with trailing space", "42 ", 42},
+		{"with both spaces", " 42 ", 42},
+		{"invalid number", "abc", 0},
+		{"empty string", "", 0},
+		{"float number", "42.5", 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := common.GetInt64(tt.val); got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -39,6 +39,8 @@ func GetBool(val string) bool {
 	}
 }
 
+// GetInt64 parses a string value as an int64.
+// If the parsing fails, it returns 0.
 func GetInt64(val string) int64 {
 	val = strings.TrimSpace(val)
 	val = strings.ToLower(val)
