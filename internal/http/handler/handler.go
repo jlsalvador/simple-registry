@@ -42,7 +42,6 @@ func ChallengeRequest(
 		if r.TLS != nil {
 			scheme = "https"
 		} else if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
-			// Soporte para proxies inversos (Nginx, Traefik, etc.)
 			scheme = forwardedProto
 		}
 
@@ -52,7 +51,6 @@ func ChallengeRequest(
 			r.Host,
 		)
 		w.Header().Set("WWW-Authenticate", challenge)
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
