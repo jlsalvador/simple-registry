@@ -33,6 +33,28 @@ type ServeMux struct {
 	mux *http.ServeMux
 }
 
+// IsValidAuth returns if the request is authenticated.
+func (m *ServeMux) IsValidAuth(r *http.Request) bool {
+	auth := r.Header.Get("Authorization")
+
+	// Bearer
+	if strings.HasPrefix(auth, "Bearer ") {
+		_, ok := m.GetClaimFromToken(r)
+		return ok
+	}
+
+	// Basic
+	if strings.HasPrefix(auth, "Basic ") {
+		user, pwd, ok := r.BasicAuth()
+		if !ok {
+			return false
+		}
+		return m.cfg.Rbac.HasUser(user, pwd)
+	}
+
+	return false
+}
+
 func ChallengeRequest(
 	w http.ResponseWriter,
 	r *http.Request,

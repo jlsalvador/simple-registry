@@ -60,7 +60,7 @@ func (m *ServeMux) BlobsGet(
 	}
 
 	// Check if the user have permission to pull the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodGet) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -120,7 +120,7 @@ func (m *ServeMux) BlobsDelete(
 	}
 
 	// Check if the user have permission to delete blobs.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
 		ChallengeRequest(w, r)
 		return
 	}

@@ -65,7 +65,7 @@ func (m *ServeMux) ReferrersGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", repo, netHttp.MethodGet) {
+	if !m.IsRequestAllowed(r, "manifests", repo, netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}

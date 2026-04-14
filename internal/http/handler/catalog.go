@@ -24,22 +24,21 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/http"
 )
 
-// Index just for authorization testing and ping.
-// If anonymous access is allowed, it will return a 200 OK.
+// Index returns if the registry requires authentication.
 //
 // # Route pattern:
 //
 //	"GET /v2/"
 //
 // # HTTP status codes:
-//   - 200 OK
-//   - 401 Unauthorized
+//   - 200 OK           - The request is authenticated.
+//   - 401 Unauthorized - The request is not authenticated.
+//   - 403 Forbidden    - The request is unproperly authenticated.
 func (m *ServeMux) Index(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	// Check if user is allowed to access this registry.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "", "", netHttp.MethodGet) {
+	if !m.IsValidAuth(r) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -63,7 +62,7 @@ func (m *ServeMux) CatalogList(
 	r *netHttp.Request,
 ) {
 	// Check if user has permission to access the catalog.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "catalog", "", netHttp.MethodGet) {
+	if !m.IsRequestAllowed(r, "catalog", "", netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}

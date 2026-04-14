@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/jlsalvador/simple-registry/pkg/digest"
@@ -202,65 +201,6 @@ func TestManifests(t *testing.T) {
 						return r
 					},
 					http.StatusNotFound,
-				},
-			},
-		},
-		{
-			name: "index read success, requires image authorization",
-			requests: []testRequestBuilder{
-				testRequestBuilderPutManifests,
-				{
-					func(_ *http.Response) *http.Request {
-						// anonymous user MUST get index.
-						return httptest.NewRequest(http.MethodGet, "/v2/", nil)
-					},
-					http.StatusOK,
-				},
-				{
-					func(_ *http.Response) *http.Request {
-						return httptest.NewRequest(http.MethodGet, "/v2/myrepo/myimage/manifests/latest", nil)
-					},
-					http.StatusUnauthorized,
-				},
-				{
-					func(prevResp *http.Response) *http.Request {
-						resource := "manifests"
-						scope := "myrepo/myimage:latest"
-						verb := http.MethodGet
-						auth := prevResp.Header.Get("WWW-Authenticate")
-						if !strings.HasPrefix(auth, "Bearer realm=") {
-							t.Fatal("authenticate header without bearer")
-						}
-
-						r := httptest.NewRequest(http.MethodGet, "/token", nil)
-						r.SetBasicAuth(testUser, testPwd)
-						q := r.URL.Query()
-						q.Set("resource", resource)
-						q.Set("scope", scope)
-						q.Set("verb", verb)
-						r.URL.RawQuery = q.Encode()
-
-						return r
-					},
-					http.StatusOK,
-				},
-				{
-					func(prevResp *http.Response) *http.Request {
-						defer prevResp.Body.Close()
-
-						var out struct {
-							Token string `json:"token"`
-						}
-
-						if err := json.NewDecoder(prevResp.Body).Decode(&out); err != nil {
-							t.Fatal(err)
-						}
-
-						r := httptest.NewRequest(http.MethodGet, "/v2/myrepo/myimage/manifests/latest", nil)
-						r.Header.Add("Authorization", "Bearer "+out.Token)
-						return r
-					},
-					http.StatusOK,
 				},
 			},
 		},

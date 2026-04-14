@@ -81,7 +81,7 @@ func (m *ServeMux) ManifestsGet(
 	}
 
 	// Check if the user is allowed to pull this manifest.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodGet) {
+	if !m.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -157,7 +157,7 @@ func (m *ServeMux) ManifestsPut(
 	}
 
 	// Check if the user can to push manifests to the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodPut) {
+	if !m.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodPut) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -245,7 +245,7 @@ func (m *ServeMux) ManifestsDelete(
 	}
 
 	// Check if the user can delete manifests from the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodDelete) {
+	if !m.IsRequestAllowed(r, "manifests", rbacRepo, netHttp.MethodDelete) {
 		ChallengeRequest(w, r)
 		return
 	}

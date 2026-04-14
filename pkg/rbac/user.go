@@ -20,6 +20,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const AnonymousUsername = "anonymous"
+
 func (e *Engine) HasUser(usr string, pwd string) bool {
 	if i := slices.IndexFunc(e.Users, func(user User) bool {
 		return user.Name == usr && user.IsPasswordValid(pwd)

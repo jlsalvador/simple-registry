@@ -16,9 +16,11 @@ package handler_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 )
 
@@ -28,7 +30,7 @@ func TestCatalog(t *testing.T) {
 		requests []testRequestBuilder
 	}{
 		{
-			name: "successful index",
+			name: "successful index with proper basic auth",
 			requests: []testRequestBuilder{
 				{
 					func(_ *http.Response) *http.Request {
@@ -41,14 +43,74 @@ func TestCatalog(t *testing.T) {
 			},
 		},
 		{
-			name: "successful index without auth because anonymous user is enabled",
+			name: "unsuccessful index with invalid basic auth",
 			requests: []testRequestBuilder{
 				{
 					func(_ *http.Response) *http.Request {
 						r := httptest.NewRequest(http.MethodGet, "/v2/", nil)
+						r.SetBasicAuth("invalid", "invalid")
+						return r
+					},
+					http.StatusForbidden,
+				},
+			},
+		},
+		{
+			name: "successful index with proper bearer auth",
+			requests: []testRequestBuilder{
+				{
+					func(_ *http.Response) *http.Request {
+						// Request to fetch token realm.
+						return httptest.NewRequest(http.MethodGet, "/v2/", nil)
+					},
+					http.StatusUnauthorized,
+				},
+				{
+					func(prevResp *http.Response) *http.Request {
+						// Fetch realm from previous request.
+						realmRegExp := regexp.MustCompile(`realm="([^"]+)"`)
+						auth := prevResp.Header.Get("WWW-Authenticate")
+						match := realmRegExp.FindStringSubmatch(auth)
+						if len(match) != 2 || match[1] == "" {
+							t.Error("can not fetch realm from previous request")
+						}
+						realm := match[1]
+
+						// Fetch token with valid credentials from realm.
+						r := httptest.NewRequest(http.MethodGet, realm, nil)
+						r.SetBasicAuth(testUser, testPwd)
 						return r
 					},
 					http.StatusOK,
+				},
+				{
+					func(prevResp *http.Response) *http.Request {
+						// Fetch token from previous response.
+						defer prevResp.Body.Close()
+						var resp struct {
+							Token string `json:"token"`
+						}
+						if err := json.NewDecoder(prevResp.Body).Decode(&resp); err != nil {
+							t.Fatal(err)
+						}
+
+						// Request to /v2/ with bearer token.
+						r := httptest.NewRequest(http.MethodGet, "/v2/", nil)
+						r.Header.Set("Authorization", "Bearer "+resp.Token)
+						return r
+					},
+					http.StatusOK,
+				},
+			},
+		},
+		{
+			name: "index requires token, even when anonymous user is enabled",
+			requests: []testRequestBuilder{
+				{
+					func(_ *http.Response) *http.Request {
+						return httptest.NewRequest(http.MethodGet, "/v2/", nil)
+					},
+					http.StatusUnauthorized,
 				},
 			},
 		},

@@ -177,7 +177,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -200,7 +200,7 @@ func (m *ServeMux) BlobsUploadsPost(
 	// Check if the user can pull the other repository.
 	// `from` could be empty if automatic content discovery is enabled.
 	if mount != "" {
-		if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", from, netHttp.MethodGet) {
+		if !m.IsRequestAllowed(r, "blobs", from, netHttp.MethodGet) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(netHttp.StatusUnauthorized)
 			json.NewEncoder(w).Encode(ErrorUnauthorized)
@@ -261,7 +261,7 @@ func (m *ServeMux) BlobsUploadsGet(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPost) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -333,7 +333,7 @@ func (m *ServeMux) BlobsUploadsPatch(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPatch) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPatch) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -443,7 +443,7 @@ func (m *ServeMux) BlobsUploadsPut(
 	}
 
 	// Check if the user can push to the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPut) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodPut) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -543,7 +543,7 @@ func (m *ServeMux) BlobsUploadsDelete(
 	}
 
 	// Check if the user can delete blobs from the repository.
-	if !m.cfg.Rbac.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
+	if !m.IsRequestAllowed(r, "blobs", repo, netHttp.MethodDelete) {
 		ChallengeRequest(w, r)
 		return
 	}
