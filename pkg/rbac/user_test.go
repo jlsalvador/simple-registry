@@ -22,15 +22,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestIsPasswordValid(t *testing.T) {
-	var user = rbac.User{
-		Name: "testuser",
-		PasswordHash: func() string {
-			pwd, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-			return string(pwd)
-		}(),
-	}
+var TestUser = rbac.User{
+	Name: "testuser",
+	PasswordHash: func() string {
+		pwd, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		return string(pwd)
+	}(),
+}
 
+func TestIsPasswordValid(t *testing.T) {
 	tcs := []struct {
 		name          string
 		plainPassword string
@@ -52,9 +52,95 @@ func TestIsPasswordValid(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := user.IsPasswordValid(tc.plainPassword)
+			got := TestUser.IsPasswordValid(tc.plainPassword)
 			if got != tc.want {
 				t.Errorf("IsPasswordValid() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasUser(t *testing.T) {
+	// Create an engine with the test user.
+	engine := &rbac.Engine{
+		Users: []rbac.User{TestUser},
+	}
+
+	tcs := []struct {
+		name     string
+		username string
+		password string
+		want     bool
+	}{
+		{
+			name:     "valid user and password",
+			username: "testuser",
+			password: "password123",
+			want:     true,
+		},
+		{
+			name:     "invalid password",
+			username: "testuser",
+			password: "wrongpassword",
+			want:     false,
+		},
+		{
+			name:     "nonexistent user",
+			username: "nonexistent",
+			password: "password123",
+			want:     false,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := engine.HasUser(tc.username, tc.password)
+			if got != tc.want {
+				t.Errorf("HasUser() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsAnonymousUserEnabled(t *testing.T) {
+	tcs := []struct {
+		name  string
+		users []rbac.User
+		want  bool
+	}{
+		{
+			name: "anonymous user enabled",
+			users: []rbac.User{
+				TestUser,
+				{Name: rbac.AnonymousUsername},
+			},
+			want: true,
+		},
+		{
+			name:  "anonymous user disabled",
+			users: []rbac.User{TestUser},
+			want:  false,
+		},
+		{
+			name:  "no users",
+			users: []rbac.User{},
+			want:  false,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			engine := &rbac.Engine{
+				Users: tc.users,
+			}
+
+			got := engine.IsAnonymousUserEnabled()
+			if got != tc.want {
+				t.Errorf("IsAnonymousUserEnabled() = %v, want %v", got, tc.want)
 			}
 		})
 	}
