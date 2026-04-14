@@ -2,7 +2,7 @@
 #
 # Usage:
 #   make build  # Compile binaries first
-#   docker build --platform=linux/amd64 -t simple-registry:latest .
+#   docker build --platform=linux/amd64,linux/aarch64 -t simple-registry:latest .
 
 FROM gcr.io/distroless/static:nonroot
 
