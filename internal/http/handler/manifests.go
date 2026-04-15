@@ -30,7 +30,6 @@ import (
 func getContentType(manifest []byte) string {
 	var aux struct {
 		MediaType string `json:"mediaType"`
-		Manifests []any  `json:"manifests"`
 	}
 	if err := json.Unmarshal(manifest, &aux); err != nil {
 		return registry.MediaTypeOCIImageManifest
