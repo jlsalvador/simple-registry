@@ -91,7 +91,7 @@ func TestReferrers(t *testing.T) {
 					reqPutReferrer("referrer-sbom", "application/vnd.example.sbom"),
 					http.StatusCreated,
 				},
-				// 3. GET referrers for the subject digest — list should be non-empty.
+				// 3. GET referrers for the subject digest, list should be non-empty.
 				{
 					func(_ *http.Response) *http.Request {
 						url := fmt.Sprintf("/v2/myrepo/myimage/referrers/sha256:%s", testManifestDigest)

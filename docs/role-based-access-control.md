@@ -18,7 +18,7 @@ RBAC in **Simple Registry** is built around four core concepts:
 For every HTTP request, the registry:
 
 1. Authenticates the user.
-2. Resolves the user’s groups.
+2. Resolves the user's groups.
 3. Collects all applicable RoleBindings.
 4. Checks whether at least one bound role authorizes the requested action on
    the target resource and repository.
@@ -372,7 +372,7 @@ makes the registry completely open.
 For every incoming HTTP request:
 
 1. The user is authenticated (`admin`, `anonymous`, etc.).
-2. The user’s groups are resolved.
+2. The user's groups are resolved.
 3. All matching RoleBindings are collected:
    - subject matches
    - scope regexp matches the repository

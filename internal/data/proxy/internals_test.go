@@ -194,7 +194,7 @@ func TestFetchManifestFromUpstream_Unauthorized(t *testing.T) {
 
 	p := &proxy.Proxy{Url: srv.URL, Timeout: 5 * time.Second}
 	_, _, err := proxy.FetchManifestFromUpstream(p, "repo/img", "latest")
-	// The first 401 triggers auth, which fails → error (not ErrNotExist).
+	// The first 401 triggers auth, which fails with error (not ErrNotExist).
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -416,7 +416,7 @@ func TestFetchReferrersFromUpstream_EarlyYieldBreak(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Break after the first item – exercises the `return` branch in the iterator.
+	// Break after the first item, exercises the `return` branch in the iterator.
 	count := 0
 	for range seq {
 		count++
