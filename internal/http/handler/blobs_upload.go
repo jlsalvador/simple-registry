@@ -179,6 +179,8 @@ func (m *ServeMux) BlobsUploadsPost(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
+	q := r.URL.Query()
+
 	// "repo" must be a valid repository name.
 	repo := r.PathValue("name")
 	if !registry.RegExprName.MatchString(repo) {
@@ -195,14 +197,14 @@ func (m *ServeMux) BlobsUploadsPost(
 	}
 
 	// Case 1. Mount blob from other repository.
-	mount := r.URL.Query().Get("mount")
+	mount := q.Get("mount")
 	if mount != "" && !registry.RegExprDigest.MatchString(mount) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorDigestInvalid)
 		return
 	}
-	from := r.URL.Query().Get("from")
+	from := q.Get("from")
 	if from != "" && !registry.RegExprName.MatchString(from) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(netHttp.StatusBadRequest)
@@ -230,8 +232,15 @@ func (m *ServeMux) BlobsUploadsPost(
 	}
 
 	// Case 2. Single POST request to upload a blob.
-	digest := r.URL.Query().Get("digest")
-	if registry.RegExprDigest.MatchString(digest) {
+	digest := q.Get("digest")
+	if q.Has("digest") {
+		if !registry.RegExprDigest.MatchString(digest) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(netHttp.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorDigestInvalid)
+			return
+		}
+
 		blobsUploadsPostSingle(
 			m.cfg,
 			repo,
