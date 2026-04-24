@@ -49,6 +49,7 @@ func parseYamlDir(dirName string) (manifests []any, err error) {
 				"filename", filename,
 				"err", err,
 			).Print()
+			continue
 		}
 		defer f.Close()
 

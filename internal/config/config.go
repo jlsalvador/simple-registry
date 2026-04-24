@@ -121,7 +121,7 @@ func WithHttpAddr(addr string) Option {
 
 func WithHttpUI(enable bool) Option {
 	return func(o *options) {
-		o.ui = true
+		o.ui = enable
 	}
 }
 
@@ -302,7 +302,7 @@ func New(opts ...Option) (*Config, error) {
 		o.tokenTimeout = time.Second * 30
 	}
 	http := Http{
-		Addr:         "0.0.0.0:5000",
+		Addr:         o.addr,
 		TokenSecret:  o.tokenSecret,
 		TokenTimeout: o.tokenTimeout,
 		UI:           o.ui,
