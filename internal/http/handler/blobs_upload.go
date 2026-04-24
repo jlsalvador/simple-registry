@@ -104,6 +104,18 @@ func blobsUploadsPostSingle(
 		return
 	}
 	if err := cfg.Data.BlobsUploadCommit(repo, uuid, digest); err != nil {
+		// Best effort to cancel the upload if commit fails.
+		if err := cfg.Data.BlobsUploadCancel(repo, uuid); err != nil {
+			LogError(err)
+		}
+
+		if errors.Is(err, data.ErrDigestMismatch) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(netHttp.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorDigestInvalid)
+			return
+		}
+
 		LogError(err)
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
