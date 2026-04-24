@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 
@@ -52,14 +53,24 @@ func LogError(err error) {
 	}
 
 	stack := make([]uintptr, MaxStackDepth)
-	length := runtime.Callers(1, stack)
+	length := runtime.Callers(2, stack) // Skip LogError itself.
+
+	frames := runtime.CallersFrames(stack[:length])
+	var stackTrace []string
+	for {
+		frame, more := frames.Next()
+		stackTrace = append(stackTrace, fmt.Sprintf("%s:%d %s", frame.File, frame.Line, frame.Function))
+		if !more {
+			break
+		}
+	}
 
 	log.Error(
 		"service.name", version.AppName,
 		"service.version", version.AppVersion,
 		"event.dataset", "http.access",
 		"error.message", err.Error(),
-		"error.stack_trace", stack[:length],
+		"error.stack_trace", stackTrace,
 		"error.type", reflect.TypeOf(err),
 	).Print()
 }
