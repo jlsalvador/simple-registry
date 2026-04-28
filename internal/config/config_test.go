@@ -71,30 +71,180 @@ func TestNew(t *testing.T) {
 			t.Fatal("expected config, got nil")
 		}
 	})
+}
 
-	t.Run("with invalid adminPwd length for bcrypt", func(t *testing.T) {
-		// bcrypt returns an error if the password exceeds 72 bytes.
-		longPwd := strings.Repeat("a", 73)
-		_, err := config.New(
-			config.WithAdminName("admin"),
-			config.WithAdminPwd([]byte(longPwd)),
-			config.WithDataDir(tmpDir),
-		)
-		if err == nil {
-			t.Fatal("expected error due to bcrypt byte limit")
+func TestNewWithInvalidAdminPwd(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// bcrypt returns an error if the password exceeds 72 bytes.
+	longPwd := strings.Repeat("a", 73)
+	_, err := New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte(longPwd)),
+		WithDataDir(tmpDir),
+	)
+	if err == nil {
+		t.Fatal("expected error due to bcrypt byte limit")
+	}
+}
+
+func TestNewWithHttpTokenSecretFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	tokenFile := filepath.Join(tmpDir, "token.txt")
+	err := os.WriteFile(tokenFile, []byte("secret-token"), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+		WithDataDir(tmpDir),
+		WithHttpTokenSecretFile(tokenFile),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("expected config, got nil")
+	}
+}
+
+func TestNewWithMissingHttpTokenSecretFile(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected a panic when token secret file is missing")
 		}
-	})
+	}()
 
-	t.Run("with empty passwords (panic expected)", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Errorf("expected a panic when both passwords are empty")
-			}
-		}()
-		config.New(
-			config.WithAdminName("admin"),
-			config.WithAdminPwd([]byte("")),
-			config.WithDataDir(tmpDir),
-		)
-	})
+	tmpDir := t.TempDir()
+
+	New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+		WithDataDir(tmpDir),
+		WithHttpTokenSecretFile(filepath.Join(tmpDir, "missing-token.txt")),
+	)
+}
+
+func TestNewWithHttpCertFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	certFile := filepath.Join(tmpDir, "cert.pem")
+	err := os.WriteFile(certFile, []byte("cert-content"), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+		WithDataDir(tmpDir),
+		WithHttpCertFile(certFile),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("expected config, got nil")
+	}
+	if cfg.Web.CertFile != certFile {
+		t.Errorf("expected cert file %s, got %s", certFile, cfg.Web.CertFile)
+	}
+}
+
+func TestNewWithHttpKeyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	keyFile := filepath.Join(tmpDir, "key.pem")
+	err := os.WriteFile(keyFile, []byte("key-content"), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+		WithDataDir(tmpDir),
+		WithHttpKeyFile(keyFile),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("expected config, got nil")
+	}
+	if cfg.Web.KeyFile != keyFile {
+		t.Errorf("expected key file %s, got %s", keyFile, cfg.Web.KeyFile)
+	}
+}
+
+func TestNewWithExplicitHttpSettings(t *testing.T) {
+	tmpDir := t.TempDir()
+	certFile := filepath.Join(tmpDir, "cert.pem")
+	keyFile := filepath.Join(tmpDir, "key.pem")
+	if err := os.WriteFile(certFile, []byte("cert-content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyFile, []byte("key-content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tokenSecret := []byte("super-secret-token")
+	addr := "127.0.0.1:4321"
+
+	cfg, err := New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+		WithDataDir(tmpDir),
+		WithHttpAddr(addr),
+		WithHttpTokenSecret(tokenSecret),
+		WithHttpTokenTimeout(15*time.Second),
+		WithHttpUI(false),
+		WithHttpCertFile(certFile),
+		WithHttpKeyFile(keyFile),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Web.Addr != addr {
+		t.Fatalf("expected addr %s, got %s", addr, cfg.Web.Addr)
+	}
+	if string(cfg.Web.TokenSecret) != string(tokenSecret) {
+		t.Fatalf("expected token secret %q, got %q", tokenSecret, cfg.Web.TokenSecret)
+	}
+	if cfg.Web.TokenTimeout != 15*time.Second {
+		t.Fatalf("expected token timeout 15s, got %s", cfg.Web.TokenTimeout)
+	}
+	if cfg.Web.UI != false {
+		t.Fatalf("expected ui false, got %v", cfg.Web.UI)
+	}
+	if cfg.Web.CertFile != certFile {
+		t.Fatalf("expected cert file %s, got %s", certFile, cfg.Web.CertFile)
+	}
+	if cfg.Web.KeyFile != keyFile {
+		t.Fatalf("expected key file %s, got %s", keyFile, cfg.Web.KeyFile)
+	}
+}
+
+func TestNewPanicsWithoutDataDir(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic without data dir")
+		}
+	}()
+
+	New(
+		WithAdminName("admin"),
+		WithAdminPwd([]byte("pwd")),
+	)
+}
+
+func TestNewPanicsWithoutAdminPwd(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic without admin password")
+		}
+	}()
+
+	tmpDir := t.TempDir()
+
+	New(WithDataDir(tmpDir))
 }
