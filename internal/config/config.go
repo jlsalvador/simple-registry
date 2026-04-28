@@ -32,7 +32,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Http struct {
+type Web struct {
 	Addr         string
 	TokenSecret  []byte
 	TokenTimeout time.Duration
@@ -42,7 +42,7 @@ type Http struct {
 }
 
 type Config struct {
-	Http Http
+	Web  Web
 	Rbac rbac.Engine
 	Data data.DataStorage
 }
@@ -148,7 +148,7 @@ func WithCfgDirs(dirs []string) Option {
 			manifests = append(manifests, ms...)
 		}
 
-		tokens, users, roles, roleBindings, err := GetTokensUsersRolesRoleBindingsFromManifests(manifests)
+		tokens, users, roles, roleBindings, err := getTokensUsersRolesRoleBindingsFromManifests(manifests)
 		if err != nil {
 			panic(err)
 		}
@@ -160,12 +160,12 @@ func WithCfgDirs(dirs []string) Option {
 			RoleBindings: roleBindings,
 		}
 
-		proxies, err := GetProxiesFromManifests(manifests)
+		proxies, err := getProxiesFromManifests(manifests)
 		if err != nil {
 			panic(err)
 		}
 
-		dataDir := GetDataDirFromManifests(manifests)
+		dataDir := getDataDirFromManifests(manifests)
 		if dataDir == "" {
 			panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
 		}
@@ -173,7 +173,7 @@ func WithCfgDirs(dirs []string) Option {
 		fs := filesystem.NewFilesystemDataStorage(dataDir)
 		o.data = proxy.NewProxyDataStorage(fs, proxies)
 
-		http := GetHttpFromManifests(manifests)
+		http := getWebFromManifests(manifests)
 		if http.Addr != "" {
 			WithHttpAddr(http.Addr)(o)
 		}
@@ -301,7 +301,7 @@ func New(opts ...Option) (*Config, error) {
 	if o.tokenTimeout == 0 {
 		o.tokenTimeout = time.Second * 30
 	}
-	http := Http{
+	web := Web{
 		Addr:         o.addr,
 		TokenSecret:  o.tokenSecret,
 		TokenTimeout: o.tokenTimeout,
@@ -311,7 +311,7 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	return &Config{
-		Http: http,
+		Web:  web,
 		Rbac: *o.rbacEngine,
 		Data: o.data,
 	}, nil

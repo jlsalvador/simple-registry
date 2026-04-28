@@ -12,27 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config_test
+package config
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/jlsalvador/simple-registry/internal/config"
 )
 
 func TestNewWithCfgDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfgYaml := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: Configuration
 metadata:
   name: test
 spec:
   dataDir: ` + tmpDir + `
-  http:
+  web:
     addr: 127.0.0.1:5000
     tokenSecret: super-token-secret
     tokenTimeout: 30
@@ -41,7 +39,7 @@ spec:
 
 	// Valid YAML file.
 	validYaml := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: User
 metadata:
   name: admin
@@ -68,7 +66,7 @@ spec:
 	}
 
 	t.Run("valid directory parsing", func(t *testing.T) {
-		cfg, err := config.New(config.WithCfgDirs([]string{tmpDir}))
+		cfg, err := New(WithCfgDirs([]string{tmpDir}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -85,9 +83,9 @@ spec:
 		}()
 
 		badDir := t.TempDir()
-		os.WriteFile(filepath.Join(badDir, "bad.yaml"), []byte("invalid: [yaml format"), 0644)
+		os.WriteFile(filepath.Join(badDir, "bad.yaml"), []byte("invalid: [yaml format"), 0o644)
 
-		_, err := config.New(config.WithCfgDirs([]string{badDir}))
+		_, err := New(WithCfgDirs([]string{badDir}))
 		if err == nil {
 			t.Fatal("expected error decoding malformed yaml")
 		}
@@ -100,7 +98,7 @@ spec:
 			}
 		}()
 
-		_, err := config.New(config.WithCfgDirs([]string{"/path/does/not/exist"}))
+		_, err := New(WithCfgDirs([]string{"/path/does/not/exist"}))
 		if err == nil {
 			t.Fatal("expected error if cfgdir is missing")
 		}
@@ -115,15 +113,15 @@ spec:
 
 		badRbacDir := t.TempDir()
 		badYaml := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: Role
 metadata:
   name: bad
 spec:
   verbs: ["invalid-verb"]
 `
-		os.WriteFile(filepath.Join(badRbacDir, "bad-role.yaml"), []byte(badYaml), 0644)
-		_, err := config.New(config.WithCfgDirs([]string{badRbacDir}))
+		os.WriteFile(filepath.Join(badRbacDir, "bad-role.yaml"), []byte(badYaml), 0o644)
+		_, err := New(WithCfgDirs([]string{badRbacDir}))
 		if err == nil {
 			t.Fatal("expected error from parsing verbs")
 		}
@@ -138,7 +136,7 @@ spec:
 
 		badProxyDir := t.TempDir()
 		badYaml := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: PullThroughCache
 metadata:
   name: proxy
@@ -146,8 +144,8 @@ spec:
   upstream:
     passwordFile: /path/that/does/not/exist/pwd.txt
 `
-		os.WriteFile(filepath.Join(badProxyDir, "bad-proxy.yaml"), []byte(badYaml), 0644)
-		_, err := config.New(config.WithCfgDirs([]string{badProxyDir}))
+		os.WriteFile(filepath.Join(badProxyDir, "bad-proxy.yaml"), []byte(badYaml), 0o644)
+		_, err := New(WithCfgDirs([]string{badProxyDir}))
 		if err == nil {
 			t.Fatal("expected error from reading invalid password file")
 		}

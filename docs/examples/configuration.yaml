@@ -6,7 +6,7 @@ metadata:
 spec:
   dataDir: ./private/data
 
-  http:
+  web:
     addr: 0.0.0.0:5000
 
     tokenSecret: super-token-secret

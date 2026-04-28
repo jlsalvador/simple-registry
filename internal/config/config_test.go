@@ -12,30 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config_test
+package config
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/jlsalvador/simple-registry/internal/config"
+	"time"
 )
 
 func TestNew(t *testing.T) {
 	tmpDir := t.TempDir()
 	pwdFile := filepath.Join(tmpDir, "pwd.txt")
-	err := os.WriteFile(pwdFile, []byte("secret"), 0644)
+	err := os.WriteFile(pwdFile, []byte("secret"), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Run("with valid adminPwdFile", func(t *testing.T) {
-		cfg, err := config.New(
-			config.WithAdminName("admin"),
-			config.WithAdminPwdFile(pwdFile),
-			config.WithDataDir(tmpDir),
+		cfg, err := New(
+			WithAdminName("admin"),
+			WithAdminPwdFile(pwdFile),
+			WithDataDir(tmpDir),
 		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -51,18 +50,19 @@ func TestNew(t *testing.T) {
 				t.Fatal("expected a panic when reading missing file")
 			}
 		}()
-		config.New(
-			config.WithAdminName("admin"),
-			config.WithAdminPwdFile(filepath.Join(tmpDir, "missing.txt")),
-			config.WithDataDir(tmpDir),
+
+		New(
+			WithAdminName("admin"),
+			WithAdminPwdFile(filepath.Join(tmpDir, "missing.txt")),
+			WithDataDir(tmpDir),
 		)
 	})
 
 	t.Run("with adminPwd string", func(t *testing.T) {
-		cfg, err := config.New(
-			config.WithAdminName("admin"),
-			config.WithAdminPwd([]byte("secret")),
-			config.WithDataDir(tmpDir),
+		cfg, err := New(
+			WithAdminName("admin"),
+			WithAdminPwd([]byte("secret")),
+			WithDataDir(tmpDir),
 		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

@@ -24,9 +24,9 @@ import (
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
 
-const ApiVersion = "simple-registry.jlsalvador.online/v1beta1"
+const apiVersion = "simple-registry.jlsalvador.online/v1beta1"
 
-type TokenManifest struct {
+type tokenManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -39,7 +39,7 @@ type TokenManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type UserManifest struct {
+type userManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -51,7 +51,7 @@ type UserManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type RoleManifest struct {
+type roleManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -63,7 +63,7 @@ type RoleManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type RoleBindingManifest struct {
+type roleBindingManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -81,7 +81,7 @@ type RoleBindingManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type PullThroughCacheManifest struct {
+type pullThroughCacheManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -100,7 +100,7 @@ type PullThroughCacheManifest struct {
 	} `json:"spec" yaml:"spec"`
 }
 
-type ConfigurationManifest struct {
+type configurationManifest struct {
 	yamlscheme.CommonManifest
 
 	Metadata struct {
@@ -109,27 +109,27 @@ type ConfigurationManifest struct {
 	Spec struct {
 		DataDir string `json:"dataDir" yaml:"dataDir"`
 
-		Http struct {
+		Web struct {
 			Addr         string `json:"addr" yaml:"addr"`
 			TokenSecret  string `json:"tokenSecret" yaml:"tokenSecret"`
 			TokenTimeout int    `json:"tokenTimeout" yaml:"tokenTimeout"`
 			UI           bool   `json:"ui" yaml:"ui"`
 			CertFile     string `json:"certfile" yaml:"certfile"`
 			KeyFile      string `json:"keyfile" yaml:"keyfile"`
-		} `json:"http" yaml:"http"`
+		} `json:"web" yaml:"web"`
 	} `json:"spec" yaml:"spec"`
 }
 
 func init() {
-	yamlscheme.Register[TokenManifest](ApiVersion, "Token")
-	yamlscheme.Register[UserManifest](ApiVersion, "User")
-	yamlscheme.Register[RoleManifest](ApiVersion, "Role")
-	yamlscheme.Register[RoleBindingManifest](ApiVersion, "RoleBinding")
-	yamlscheme.Register[PullThroughCacheManifest](ApiVersion, "PullThroughCache")
-	yamlscheme.Register[ConfigurationManifest](ApiVersion, "Configuration")
+	yamlscheme.Register[tokenManifest](apiVersion, "Token")
+	yamlscheme.Register[userManifest](apiVersion, "User")
+	yamlscheme.Register[roleManifest](apiVersion, "Role")
+	yamlscheme.Register[roleBindingManifest](apiVersion, "RoleBinding")
+	yamlscheme.Register[pullThroughCacheManifest](apiVersion, "PullThroughCache")
+	yamlscheme.Register[configurationManifest](apiVersion, "Configuration")
 }
 
-func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
+func getTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 	tokens []rbac.Token,
 	users []rbac.User,
 	roles []rbac.Role,
@@ -139,7 +139,7 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 	for _, manifest := range manifests {
 		switch m := manifest.(type) {
 
-		case *TokenManifest:
+		case *tokenManifest:
 			tokens = append(tokens, rbac.Token{
 				Name:      m.Metadata.Name,
 				Value:     m.Spec.Value,
@@ -147,14 +147,14 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 				ExpiresAt: m.Spec.ExpiresAt,
 			})
 
-		case *UserManifest:
+		case *userManifest:
 			users = append(users, rbac.User{
 				Name:         m.Metadata.Name,
 				PasswordHash: m.Spec.PasswordHash,
 				Groups:       m.Spec.Groups,
 			})
 
-		case *RoleManifest:
+		case *roleManifest:
 			var verbs []string
 			verbs, err = rbac.ParseVerbs(m.Spec.Verbs)
 			if err != nil {
@@ -166,7 +166,7 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 				Verbs:     verbs,
 			})
 
-		case *RoleBindingManifest:
+		case *roleBindingManifest:
 			subjects := []rbac.Subject{}
 			for _, s := range m.Spec.Subjects {
 				subjects = append(subjects, rbac.Subject{
@@ -197,9 +197,9 @@ func GetTokensUsersRolesRoleBindingsFromManifests(manifests []any) (
 	return
 }
 
-func GetProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error) {
+func getProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error) {
 	for _, manifest := range manifests {
-		if m, ok := manifest.(*PullThroughCacheManifest); ok {
+		if m, ok := manifest.(*pullThroughCacheManifest); ok {
 			if m.Spec.Upstream.PasswordFile != "" {
 				password, err := os.ReadFile(m.Spec.Upstream.PasswordFile)
 				if err != nil {
@@ -221,9 +221,9 @@ func GetProxiesFromManifests(manifests []any) (proxies []proxy.Proxy, err error)
 	return
 }
 
-func GetDataDirFromManifests(manifests []any) (dataDir string) {
+func getDataDirFromManifests(manifests []any) (dataDir string) {
 	for _, manifest := range manifests {
-		if m, ok := manifest.(*ConfigurationManifest); ok {
+		if m, ok := manifest.(*configurationManifest); ok {
 			if m.Spec.DataDir != "" {
 				dataDir = m.Spec.DataDir
 			}
@@ -233,26 +233,26 @@ func GetDataDirFromManifests(manifests []any) (dataDir string) {
 	return
 }
 
-func GetHttpFromManifests(manifests []any) (http Http) {
+func getWebFromManifests(manifests []any) (web Web) {
 	for _, manifest := range manifests {
-		if m, ok := manifest.(*ConfigurationManifest); ok {
-			if m.Spec.Http.Addr != "" {
-				http.Addr = m.Spec.Http.Addr
+		if m, ok := manifest.(*configurationManifest); ok {
+			if m.Spec.Web.Addr != "" {
+				web.Addr = m.Spec.Web.Addr
 			}
-			if m.Spec.Http.TokenSecret != "" {
-				http.TokenSecret = []byte(m.Spec.Http.TokenSecret)
+			if m.Spec.Web.TokenSecret != "" {
+				web.TokenSecret = []byte(m.Spec.Web.TokenSecret)
 			}
-			if m.Spec.Http.TokenTimeout != 0 {
-				http.TokenTimeout = time.Duration(m.Spec.Http.TokenTimeout) * time.Second
+			if m.Spec.Web.TokenTimeout != 0 {
+				web.TokenTimeout = time.Duration(m.Spec.Web.TokenTimeout) * time.Second
 			}
-			if m.Spec.Http.UI {
-				http.UI = m.Spec.Http.UI
+			if m.Spec.Web.UI {
+				web.UI = m.Spec.Web.UI
 			}
-			if m.Spec.Http.CertFile != "" {
-				http.CertFile = m.Spec.Http.CertFile
+			if m.Spec.Web.CertFile != "" {
+				web.CertFile = m.Spec.Web.CertFile
 			}
-			if m.Spec.Http.KeyFile != "" {
-				http.KeyFile = m.Spec.Http.KeyFile
+			if m.Spec.Web.KeyFile != "" {
+				web.KeyFile = m.Spec.Web.KeyFile
 			}
 		}
 	}

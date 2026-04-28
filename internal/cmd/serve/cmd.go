@@ -94,7 +94,7 @@ func buildOptions(flags *Flags) []config.Option {
 func runServer(cfg *config.Config) error {
 	h := handler.NewHandler(*cfg)
 
-	isTLS := cfg.Http.CertFile != "" && cfg.Http.KeyFile != ""
+	isTLS := cfg.Web.CertFile != "" && cfg.Web.KeyFile != ""
 
 	scheme := "HTTP"
 	if isTLS {
@@ -105,19 +105,19 @@ func runServer(cfg *config.Config) error {
 		"service.name", version.AppName,
 		"service.version", version.AppVersion,
 		"event.dataset", "cmd.serve",
-		"addr", cfg.Http.Addr,
+		"addr", cfg.Web.Addr,
 		"scheme", scheme,
 		"message", "listening for requests",
 	).Print()
 
 	if isTLS {
 		return http.ListenAndServeTLS(
-			cfg.Http.Addr,
-			cfg.Http.CertFile,
-			cfg.Http.KeyFile,
+			cfg.Web.Addr,
+			cfg.Web.CertFile,
+			cfg.Web.KeyFile,
 			h,
 		)
 	}
 
-	return http.ListenAndServe(cfg.Http.Addr, h)
+	return http.ListenAndServe(cfg.Web.Addr, h)
 }

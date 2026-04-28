@@ -182,7 +182,7 @@ func (m *ServeMux) registerRoutes() {
 		),
 	}
 
-	if m.cfg.Http.UI {
+	if m.cfg.Web.UI {
 		routes = append(routes, route.NewRoute(
 			http.MethodGet,
 			"^/ui(?:/.*)?$",

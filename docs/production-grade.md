@@ -65,6 +65,28 @@ You can split/merge your YAML manifests into multiple files and directories.
 Here are some examples:
 
 ```yaml
+# config/production.yaml
+---
+apiVersion: simple-registry.jlsalvador.online/v1beta1
+kind: Configuration
+metadata:
+  name: production
+spec:
+  dataDir: ./data
+
+  web:
+    addr: 0.0.0.0:5000
+
+    tokenSecret: super-token-secret
+    tokenTimeout: 30
+
+    ui: true
+
+    certfile: tls.crt
+    keyfile: tls.key
+```
+
+```yaml
 # rbac/users.yaml
 ---
 apiVersion: simple-registry.jlsalvador.online/v1beta1
@@ -205,7 +227,7 @@ spec:
 
 ```sh
 simple-registry serve \
-    -datadir ./data \
+    -cfgdir ./config \
     -cfgdir ./rbac \
     -cfgdir ./proxies
 ```

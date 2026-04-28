@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config_test
+package config
 
 import (
 	"errors"
@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jlsalvador/simple-registry/internal/config"
 	"github.com/jlsalvador/simple-registry/pkg/rbac"
 	"github.com/jlsalvador/simple-registry/pkg/yamlscheme"
 )
@@ -33,7 +32,7 @@ func TestParseYAML_Valid(t *testing.T) {
 
 		data := `
 ---
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: Token
 metadata:
   name: token1
@@ -43,7 +42,7 @@ spec:
   expiresAt: 2025-01-01T00:00:00Z
 
 ---
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: User
 metadata:
   name: admin
@@ -52,7 +51,7 @@ spec:
   groups: [admins]
 
 ---
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: Role
 metadata:
   name: admins
@@ -61,7 +60,7 @@ spec:
   verbs: ["*"]
 
 ---
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: RoleBinding
 metadata:
   name: admins-binding
@@ -78,7 +77,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		tokens, users, roles, bindings, err := config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		tokens, users, roles, bindings, err := getTokensUsersRolesRoleBindingsFromManifests(m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -106,7 +105,7 @@ func TestParseYAML_Invalid(t *testing.T) {
 		t.Parallel()
 
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: User
 metadata:
   name: test
@@ -123,7 +122,7 @@ spec:
 		t.Parallel()
 
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: Role
 metadata:
   name: bad-role
@@ -136,7 +135,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		_, _, _, _, err = getTokensUsersRolesRoleBindingsFromManifests(m)
 		if !errors.Is(err, rbac.ErrInvalidVerb) {
 			t.Fatalf("expected rbac.ErrInvalidVerb error: %v", err)
 		}
@@ -146,7 +145,7 @@ spec:
 		t.Parallel()
 
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: RoleBinding
 metadata:
   name: admins-binding
@@ -163,7 +162,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, _, _, _, err = config.GetTokensUsersRolesRoleBindingsFromManifests(m)
+		_, _, _, _, err = getTokensUsersRolesRoleBindingsFromManifests(m)
 		if err == nil {
 			t.Fatalf("expected regexp error")
 		}
@@ -173,7 +172,7 @@ spec:
 func TestGetProxiesFromManifests(t *testing.T) {
 	t.Run("parse valid proxy with string password", func(t *testing.T) {
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: PullThroughCache
 metadata:
   name: cache
@@ -189,7 +188,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		proxies, err := config.GetProxiesFromManifests(m)
+		proxies, err := getProxiesFromManifests(m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -204,10 +203,10 @@ spec:
 	t.Run("parse valid proxy with password file", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		pwdFile := filepath.Join(tmpDir, "pwd.txt")
-		os.WriteFile(pwdFile, []byte("filepassword"), 0644)
+		os.WriteFile(pwdFile, []byte("filepassword"), 0o644)
 
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: PullThroughCache
 metadata:
   name: cache
@@ -220,7 +219,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		proxies, err := config.GetProxiesFromManifests(m)
+		proxies, err := getProxiesFromManifests(m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -234,7 +233,7 @@ spec:
 
 	t.Run("parse proxy with invalid password file", func(t *testing.T) {
 		data := `
-apiVersion: ` + config.ApiVersion + `
+apiVersion: ` + apiVersion + `
 kind: PullThroughCache
 metadata:
   name: cache
@@ -247,7 +246,7 @@ spec:
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		_, err = config.GetProxiesFromManifests(m)
+		_, err = getProxiesFromManifests(m)
 		if err == nil {
 			t.Fatal("expected error reading non-existent password file")
 		}

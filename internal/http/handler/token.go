@@ -49,7 +49,7 @@ func (m *ServeMux) Token(w netHttp.ResponseWriter, r *netHttp.Request) {
 	}
 
 	fullScope := strings.Join(scopes, " ")
-	token, err := GenerateToken(m.cfg.Http.TokenSecret, rUsr, fullScope)
+	token, err := GenerateToken(m.cfg.Web.TokenSecret, rUsr, fullScope)
 	if err != nil {
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
@@ -183,7 +183,7 @@ func (m *ServeMux) GetClaimFromToken(r *netHttp.Request) (
 	// Verify the HMAC-SHA512 signature.
 	// We sign the "header.payload" part exactly as it was received.
 	dataToVerify := []byte(header + "." + payload)
-	h := hmac.New(sha512.New, m.cfg.Http.TokenSecret)
+	h := hmac.New(sha512.New, m.cfg.Web.TokenSecret)
 	h.Write(dataToVerify)
 	expectedSig := h.Sum(nil)
 
@@ -208,7 +208,7 @@ func (m *ServeMux) GetClaimFromToken(r *netHttp.Request) (
 	if iat, ok := claims["iat"].(float64); ok {
 		issuedAt := time.Unix(int64(iat), 0)
 		since := time.Since(issuedAt)
-		if since > m.cfg.Http.TokenTimeout {
+		if since > m.cfg.Web.TokenTimeout {
 			return nil, false // Token expired.
 		}
 	} else {
