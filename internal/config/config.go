@@ -166,12 +166,10 @@ func WithCfgDirs(dirs []string) Option {
 		}
 
 		dataDir := getDataDirFromManifests(manifests)
-		if dataDir == "" {
-			panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
+		if dataDir != "" {
+			fs := filesystem.NewFilesystemDataStorage(dataDir)
+			o.data = proxy.NewProxyDataStorage(fs, proxies)
 		}
-
-		fs := filesystem.NewFilesystemDataStorage(dataDir)
-		o.data = proxy.NewProxyDataStorage(fs, proxies)
 
 		http := getWebFromManifests(manifests)
 		if http.Addr != "" {
@@ -203,7 +201,7 @@ func New(opts ...Option) (*Config, error) {
 
 	// Data
 	if o.data == nil {
-		panic("datadir is empty, please use flag -datadir")
+		panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
 	}
 
 	// RBAC

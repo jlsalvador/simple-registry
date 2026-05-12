@@ -20,6 +20,48 @@ import (
 	"testing"
 )
 
+func TestNewWithCfgDirWithoutDataDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfgYaml := `
+apiVersion: ` + apiVersion + `
+kind: Configuration
+metadata:
+  name: test
+spec:
+  web:
+    addr: 127.0.0.1:5000
+    tokenSecret: super-token-secret
+    tokenTimeout: 30
+    ui: true
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(cfgYaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("error, dataDir is required", func(t *testing.T) {
+		t.Parallel()
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected a panic when dataDir is not set")
+			}
+		}()
+
+		_, err := New(WithCfgDirs([]string{tmpDir}))
+		if err == nil {
+			t.Fatal("expected error, dataDir is required")
+		}
+	})
+	t.Run("mix cfgdir and datadir flag", func(t *testing.T) {
+		t.Parallel()
+
+		if _, err := New(WithCfgDirs([]string{tmpDir}), WithDataDir(tmpDir)); err != nil {
+			t.Fatal("unexpected error")
+		}
+	})
+}
+
 func TestNewWithCfgDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
