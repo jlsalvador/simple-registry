@@ -30,6 +30,7 @@ import (
 const (
 	testUser                      = "testuser"
 	testPwd                       = "testpwd"
+	testTokenSecret               = "testTokenSecret"
 	testUserWithoutPerms          = "without"
 	testPwdWithoutPerms           = "without"
 	testHeaderDockerUploadUUID    = "Docker-Upload-UUID"
@@ -61,6 +62,7 @@ func testSetupTestServeMux(t *testing.T) http.Handler {
 		config.WithAdminName(testUser),
 		config.WithAdminPwd([]byte(testPwd)),
 		config.WithDataDir(t.TempDir()),
+		config.WithHttpTokenSecret([]byte(testTokenSecret)),
 		config.WithHttpUI(true),
 	)
 	if err != nil {
