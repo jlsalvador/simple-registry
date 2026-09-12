@@ -59,6 +59,7 @@ type options struct {
 
 	rbacEngine *rbac.Engine
 	data       data.DataStorage
+	proxies    []proxy.Proxy
 }
 
 type Option func(*options)
@@ -164,11 +165,11 @@ func WithCfgDirs(dirs []string) Option {
 		if err != nil {
 			panic(err)
 		}
+		o.proxies = append(o.proxies, proxies...)
 
 		dataDir := getDataDirFromManifests(manifests)
 		if dataDir != "" {
-			fs := filesystem.NewFilesystemDataStorage(dataDir)
-			o.data = proxy.NewProxyDataStorage(fs, proxies)
+			o.data = filesystem.NewFilesystemDataStorage(dataDir)
 		}
 
 		http := getWebFromManifests(manifests)
@@ -202,6 +203,18 @@ func New(opts ...Option) (*Config, error) {
 	// Data
 	if o.data == nil {
 		panic("datadir is empty, please use flag -datadir or use YAML Configuration.spec.dataDir")
+	}
+
+	// Wrap filesystem storage with pull-through cache proxies, if any.
+	// Done here (instead of inside WithCfgDirs/WithDataDir) so it works
+	// regardless of option order and of whether dataDir comes from the
+	// -datadir flag or from a Configuration manifest.
+	if len(o.proxies) > 0 {
+		if ps, ok := o.data.(*proxy.ProxyDataStorage); ok {
+			ps.Proxies = append(ps.Proxies, o.proxies...)
+		} else {
+			o.data = proxy.NewProxyDataStorage(o.data, o.proxies)
+		}
 	}
 
 	// RBAC
