@@ -37,15 +37,20 @@ func (m *ServeMux) Token(w netHttp.ResponseWriter, r *netHttp.Request) {
 	rUsr, rPwd, ok := r.BasicAuth()
 
 	if !ok {
-		w.Header().Set("WWW-Authenticate", `Basic realm="registry-token"`)
-		w.WriteHeader(netHttp.StatusUnauthorized)
-		return
-	}
-
-	// Check if the user exists and password is valid.
-	if !m.cfg.Rbac.HasUser(rUsr, rPwd) {
-		w.WriteHeader(netHttp.StatusForbidden)
-		return
+		// No credentials: allow anonymous if enabled, so public
+		// repositories can be pulled without `login`.
+		if !m.cfg.Rbac.IsAnonymousUserEnabled() {
+			w.Header().Set("WWW-Authenticate", `Basic realm="registry-token"`)
+			w.WriteHeader(netHttp.StatusUnauthorized)
+			return
+		}
+		rUsr = rbac.AnonymousUsername
+	} else {
+		// Check if the user exists and password is valid.
+		if !m.cfg.Rbac.HasUser(rUsr, rPwd) {
+			w.WriteHeader(netHttp.StatusForbidden)
+			return
+		}
 	}
 
 	fullScope := strings.Join(scopes, " ")
@@ -56,7 +61,8 @@ func (m *ServeMux) Token(w netHttp.ResponseWriter, r *netHttp.Request) {
 	}
 
 	payload := map[string]string{
-		"token": token,
+		"token":        token,
+		"access_token": token,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(payload)

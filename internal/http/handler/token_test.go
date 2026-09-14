@@ -47,11 +47,11 @@ func TestToken(t *testing.T) {
 		expectToken    bool
 	}{
 		{
-			name:           "no auth header",
+			name:           "no auth header issues anonymous token",
 			authHeader:     "",
 			scope:          "repository:test/repo:pull",
-			expectedStatus: http.StatusUnauthorized,
-			expectToken:    false,
+			expectedStatus: http.StatusOK,
+			expectToken:    true,
 		},
 		{
 			name:           "invalid basic auth",
