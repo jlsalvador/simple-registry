@@ -20,8 +20,15 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"testing"
+
+	"github.com/jlsalvador/simple-registry/internal/config"
+	"github.com/jlsalvador/simple-registry/internal/http/handler"
+	"github.com/jlsalvador/simple-registry/pkg/rbac"
 )
 
 func TestCatalog(t *testing.T) {
@@ -184,5 +191,91 @@ func TestCatalog(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestCatalogListsOnlyAllowedRepositories checks that /v2/_catalog only
+// returns the repositories the user is allowed to read. The catalog request
+// itself is not bound to a repository, so it is granted by a "^$" scope,
+// while the listing is limited by the repository scopes.
+func TestCatalogListsOnlyAllowedRepositories(t *testing.T) {
+	dataDir := t.TempDir()
+
+	cfg, err := config.New(
+		config.WithAdminName(testUser),
+		config.WithAdminPwd([]byte(testPwd)),
+		config.WithDataDir(dataDir),
+		config.WithHttpTokenSecret([]byte(testTokenSecret)),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Two repositories: one inside the scoped binding, one private.
+	for _, repo := range []string{"public/image", "private/image"} {
+		if err := os.MkdirAll(
+			filepath.Join(dataDir, "repositories", repo, "_manifests"),
+			0o750,
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cfg.Rbac.Users = append(cfg.Rbac.Users, rbac.User{
+		Name:         "catalog_user",
+		PasswordHash: testPwdHash,
+	})
+	cfg.Rbac.Roles = append(cfg.Rbac.Roles, rbac.Role{
+		Name:      "catalog_reader",
+		Resources: []string{"catalog"},
+		Verbs:     []string{http.MethodGet},
+	})
+	cfg.Rbac.RoleBindings = append(cfg.Rbac.RoleBindings,
+		rbac.RoleBinding{
+			Name:     "catalog_gate",
+			Subjects: []rbac.Subject{{Kind: "User", Name: "catalog_user"}},
+			RoleName: "catalog_reader",
+			Scopes:   []regexp.Regexp{*regexp.MustCompile(`^$`)},
+		},
+		rbac.RoleBinding{
+			Name:     "catalog_public",
+			Subjects: []rbac.Subject{{Kind: "User", Name: "catalog_user"}},
+			RoleName: "catalog_reader",
+			Scopes:   []regexp.Regexp{*regexp.MustCompile(`^public/.+$`)},
+		},
+	)
+
+	mux := handler.NewHandler(*cfg)
+
+	catalog := func(user string) []string {
+		t.Helper()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/v2/_catalog", nil)
+		r.SetBasicAuth(user, testPwd)
+		mux.ServeHTTP(w, r)
+
+		if w.Result().StatusCode != http.StatusOK {
+			t.Fatalf("%s: want %d, got %d. body: %s",
+				user, http.StatusOK, w.Result().StatusCode, w.Body.String())
+		}
+
+		var resp struct {
+			Repositories []string `json:"repositories"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatal(err)
+		}
+
+		return resp.Repositories
+	}
+
+	if got := catalog("catalog_user"); !slices.Equal(got, []string{"public/image"}) {
+		t.Errorf("scoped user: want [public/image], got %v", got)
+	}
+
+	if got := catalog(testUser); !slices.Contains(got, "public/image") ||
+		!slices.Contains(got, "private/image") {
+		t.Errorf("admin: want both repositories, got %v", got)
 	}
 }

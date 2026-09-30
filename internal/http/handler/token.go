@@ -99,65 +99,59 @@ func GenerateToken(tokenSecret []byte, user, scope string) (string, error) {
 	return signingInput + "." + signatureB64, nil
 }
 
+// RequestUsername returns the username bound to the request credentials.
+//
+// Basic auth passwords and bearer tokens are validated. Requests carrying no
+// credentials are resolved to the anonymous user, only when it is enabled.
+//
+// ok is false when the request is not properly authenticated.
+func (m *ServeMux) RequestUsername(r *netHttp.Request) (username string, ok bool) {
+	auth := r.Header.Get("Authorization")
+
+	// Basic auth.
+	if httpAuthBasicRegexp.MatchString(auth) {
+		usr, pwd, valid := r.BasicAuth()
+		if !valid || !m.cfg.Rbac.HasUser(usr, pwd) {
+			return "", false
+		}
+
+		return usr, true
+	}
+
+	// Bearer token auth.
+	if httpAuthBearerRegexp.MatchString(auth) {
+		claims, valid := m.GetClaimFromToken(r)
+		if !valid {
+			return "", false
+		}
+
+		usr, isString := claims["sub"].(string)
+		if !isString {
+			return "", false
+		}
+
+		return usr, true
+	}
+
+	// Anonymous auth.
+	if m.cfg.Rbac.IsAnonymousUserEnabled() {
+		return rbac.AnonymousUsername, true
+	}
+
+	return "", false
+}
+
 func (m *ServeMux) IsRequestAllowed(
 	r *netHttp.Request,
 	resource string,
 	scope string,
 	verb string,
 ) bool {
-	auth := r.Header.Get("Authorization")
-
-	// Basic auth.
-	if httpAuthBasicRegexp.MatchString(auth) {
-		return m.isBasicAuthAllowed(r, resource, scope, verb)
-	}
-
-	// Bearer token auth.
-	if httpAuthBearerRegexp.MatchString(auth) {
-		return m.isBearerAllowed(r, resource, scope, verb)
-	}
-
-	// Anonymous auth.
-	if m.cfg.Rbac.IsAnonymousUserEnabled() {
-		return m.cfg.Rbac.IsAllowed(rbac.AnonymousUsername, resource, scope, verb)
-	}
-
-	return false
-}
-
-func (m *ServeMux) isBasicAuthAllowed(
-	r *netHttp.Request,
-	resource string,
-	scope string,
-	verb string,
-) bool {
-	rUsr, rPwd, ok := r.BasicAuth()
-
-	// Check if the user exists and password is valid.
-	if !ok || !m.cfg.Rbac.HasUser(rUsr, rPwd) {
-		return false
-	}
-
-	// User is validated, check if it's allowed to perform the action.
-	return m.cfg.Rbac.IsAllowed(rUsr, resource, scope, verb)
-}
-
-func (m *ServeMux) isBearerAllowed(
-	r *netHttp.Request,
-	resource string,
-	scope string,
-	verb string,
-) bool {
-	claims, ok := m.GetClaimFromToken(r)
+	username, ok := m.RequestUsername(r)
 	if !ok {
 		return false
 	}
 
-	// Final RBAC check.
-	username, ok := claims["sub"].(string)
-	if !ok {
-		return false
-	}
 	return m.cfg.Rbac.IsAllowed(username, resource, scope, verb)
 }
 

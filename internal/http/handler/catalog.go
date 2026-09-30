@@ -61,8 +61,11 @@ func (m *ServeMux) CatalogList(
 	w netHttp.ResponseWriter,
 	r *netHttp.Request,
 ) {
-	// Check if user has permission to access the catalog.
-	if !m.IsRequestAllowed(r, "catalog", "", netHttp.MethodGet) {
+	// The catalog request is not bound to a repository, so it is checked
+	// against an empty scope: rolebindings granting catalog access use the
+	// "^$" scope for it (see docs/role-based-access-control.md).
+	username, ok := m.RequestUsername(r)
+	if !ok || !m.cfg.Rbac.IsAllowed(username, "catalog", "", netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -81,6 +84,12 @@ func (m *ServeMux) CatalogList(
 		w.WriteHeader(netHttp.StatusInternalServerError)
 		return
 	}
+
+	// Only the repositories allowed for the user are listed. The username was
+	// resolved above, so this does not validate the credentials per repository.
+	repos = slices.DeleteFunc(repos, func(repo string) bool {
+		return !m.cfg.Rbac.IsAllowed(username, "catalog", repo, netHttp.MethodGet)
+	})
 
 	slices.Sort(repos)
 
