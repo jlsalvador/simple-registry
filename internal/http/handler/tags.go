@@ -54,8 +54,11 @@ func (m *ServeMux) TagsList(
 		return
 	}
 
-	// Check if the user can list tags from this manifest.
-	if !m.IsRequestAllowed(r, "tags", repo, netHttp.MethodGet) {
+	// Check if the user can list tags from this manifest. The username is
+	// resolved here, so the permissions check below does not validate the
+	// credentials once per tag.
+	username, ok := m.RequestUsername(r)
+	if !ok || !m.cfg.Rbac.IsAllowed(username, "tags", repo, netHttp.MethodGet) {
 		ChallengeRequest(w, r)
 		return
 	}
@@ -75,7 +78,7 @@ func (m *ServeMux) TagsList(
 	// Filter tags by user permissions.
 	tags = slices.DeleteFunc(tags, func(t string) bool {
 		resource := repo + ":" + t
-		return !m.IsRequestAllowed(r, "tags", resource, netHttp.MethodGet)
+		return !m.cfg.Rbac.IsAllowed(username, "tags", resource, netHttp.MethodGet)
 	})
 
 	slices.Sort(tags)
