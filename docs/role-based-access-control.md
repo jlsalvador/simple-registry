@@ -97,6 +97,7 @@ spec:
   - catalog
   - blobs
   - manifests
+  - tags
   verbs:
   - HEAD
   - GET
@@ -118,6 +119,15 @@ spec:
   - `catalog`
   - `blobs`
   - `manifests`
+  - `tags`
+
+  `tags` is needed for `GET /v2/{name}/tags/list`, which is not covered by
+  `manifests`. Image watchers (Keel, Renovate, Portainer, `skopeo`/`crane` and
+  friends) need it to discover new versions.
+
+  Scopes for `tags` are evaluated twice: against the repository name, and
+  against every `repository:tag` entry, so an optional tag suffix is required
+  to actually expose them: `^library/.*$` or `^myorg/app(:.+)?$`.
 
   The wildcard `"*"` matches all resources.
 
@@ -146,7 +156,7 @@ Full administrative access.
 #### `readwrite`
 
 ```yaml
-resources: [catalog, blobs, manifests]
+resources: [catalog, blobs, manifests, tags]
 verbs: [HEAD, GET, POST, PUT, PATCH]
 ```
 
@@ -163,11 +173,11 @@ This example does **not** allow deletion.
 #### `readonly`
 
 ```yaml
-resources: [catalog, blobs, manifests]
+resources: [catalog, blobs, manifests, tags]
 verbs: [HEAD, GET]
 ```
 
-Read-only access (pull only).
+Read-only access (pull and list tags).
 
 ---
 
